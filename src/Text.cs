@@ -1,0 +1,186 @@
+﻿using System;
+using System.Collections.Generic;
+using OpenGL;
+using SharpFont;
+
+namespace Crimson
+{
+    public class Font : IDisposable
+    {
+        public struct Character
+        {
+            public uint id;
+            public Vector2 size;
+            public Vector2 bearing;
+            public int advance;
+
+            public Character(uint id, Vector2 size, Vector2 bearing, int advance)
+            {
+                this.id = id;
+                this.size = size;
+                this.bearing = bearing;
+                this.advance = advance;
+            }
+
+            public void Bind() => Gl.BindTexture(TextureTarget.Texture2d, id);
+        }
+
+        private Dictionary<char, Character> characters = new();
+
+        public int LineHeight { get; private set; }
+
+        /// <param name="path">The path to the font file. Does not accept system font names.</param>
+        /// <param name="size">The font's size in points.</param>
+        /// <param name="filter">controls antialiasing filter. Set to false on pixel art fonts.</param>
+        public Font(string path, int size, bool filter = true)
+        {
+            using Library lib = new();
+            using Face face = new(lib, path);
+            face.SetPixelSizes(0, (uint)size);
+            LineHeight = face.Size.Metrics.Height.Value;
+            Gl.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
+
+            // load first 128 ASCII characters.
+            for (uint c = 0; c < 16384; c++)
+            {
+                face.LoadChar(c, LoadFlags.Render, LoadTarget.Normal);
+                GlyphSlot glyph = face.Glyph;
+                using FTBitmap bmp = glyph.Bitmap;
+                uint tex = Gl.GenTexture();
+                Gl.BindTexture(TextureTarget.Texture2d, tex);
+                Gl.TexImage2D(
+                    TextureTarget.Texture2d, 0, InternalFormat.R8, bmp.Width, bmp.Rows,
+                    0, PixelFormat.Red, PixelType.UnsignedByte, bmp.Buffer
+                );
+                if (filter)
+                {
+                    Gl.TextureParameter(tex, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+                    Gl.TextureParameter(tex, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+                }
+                else
+                {
+                    Gl.TextureParameter(tex, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+                    Gl.TextureParameter(tex, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+                }
+
+                Gl.TextureParameter(tex, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+                Gl.TextureParameter(tex, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+
+                characters.Add((char)c, new Character(
+                    tex, new(bmp.Width, bmp.Rows), new(glyph.BitmapLeft, glyph.BitmapTop), glyph.Advance.X.Value
+                ));
+            }
+
+            Gl.BindTexture(TextureTarget.Texture2d, 0);
+            Gl.PixelStore(PixelStoreParameter.UnpackAlignment, 4);
+        }
+
+        public Character this[char c] => characters[c];
+
+        private void ReleaseUnmanagedResources()
+        {
+            foreach (var (_, c) in characters)
+                Gl.DeleteTextures(c.id);
+        }
+
+        public void Dispose()
+        {
+            ReleaseUnmanagedResources();
+            GC.SuppressFinalize(this);
+        }
+
+        ~Font() => ReleaseUnmanagedResources();
+    }
+
+    public class Label : IDrawableObject, IDisposable
+    {
+        public Material Material { get; set; } = new();
+        public Scene Scene { get; private set; }
+
+        public Font Font { get; set; }
+        public string Text { get; set; }
+
+        public Vector2 Position { get; set; }
+        public float Rotation { get; set; }
+        public Color Color { get; set; } = Color.White;
+        public Vector2 Scale { get; set; } = Vector2.One;
+
+        private static float[] vertices =
+        {
+            0, -1, 0, 0,
+            0, 0, 0, 1,
+            1, 0, 1, 1,
+            0, -1, 0, 0,
+            1, 0, 1, 1,
+            1, -1, 1, 0
+        };
+
+        void ISceneObject.Start()
+        {
+            Material.InitShaderText(Resources.Read("shaders/text.vert"), Resources.Read("shaders/text.frag"));
+
+            Material.FeedBuffer(vertices);
+            Material.BindVAO();
+
+            Material.VertexAttribPointer("VERTEX", IntPtr.Zero, 4, out uint uvLoc);
+            Material.EnableVertexAttribArray(uvLoc);
+
+            Material.EnableVertexAttribArray("TEX_COORDS", out uint tcLoc);
+            Material.VertexAttribPointer(tcLoc, new(2 * sizeof(float)), 4);
+        }
+
+        void IDrawableObject.Draw()
+        {
+            Matrix gMat = Camera.GetTransform(Position, Rotation, Vector2.One);
+
+            float x = 0;
+            float y = 0;
+            foreach (char c in Text)
+            {
+                if (c == '\n')
+                {
+                    y += Font.LineHeight / 64 * Scale.y * 2f;
+                    x = 0;
+                    continue;
+                }
+
+                Font.Character ch = Font[c];
+                Vector2 s = ch.size * Scale;
+                Vector2 p = new(x + ch.bearing.x + ch.size.x * Scale.x, y + (ch.size.y - ch.bearing.y * 2) * Scale.y);
+
+                // advance is in 1/64 of a point. divide it by 64 (bitshift by 6) to get the real value.
+                x += (ch.advance >> 6) * Scale.x * 2;
+
+                Matrix t = gMat *
+                           Matrix.Translation(new(p, 0)) *
+                           Matrix.Scaling(new(s, 1));
+
+                Material.SetUniform("TRANSFORM", t, false);
+                ch.Bind();
+                Material.SetUniform("TEXTURE", 0);
+                Material.SetUniform("COLOR", Color);
+
+                Graphics.DrawArrays(PrimitiveType.Triangles, 0, 6);
+            }
+        }
+
+        void ISceneObject.Update(float delta) { }
+        void ISceneObject.Frame(float delta) { }
+        void ISceneObject.SetScene(Scene value) => Scene = value;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Material?.Dispose();
+                Font?.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+    }
+}
