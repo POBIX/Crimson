@@ -233,8 +233,22 @@ namespace Crimson
         public const float Pi = PI;
         public const float Tau = MathF.Tau;
 
+        public static float Pow(float x, float y) => MathF.Pow(x, y);
         public static float Abs(float f) => f < 0 ? -f : f;
         public static Vector2 Abs(Vector2 v) => new(Abs(v.x), Abs(v.y));
+        public static float Cos(float alpha) => MathF.Cos(alpha);
+        public static float Sin(float alpha) => MathF.Sin(alpha);
+        public static float Tan(float alpha) => MathF.Tan(alpha);
+        public static float Sin2(float alpha) => Pow(Sin(alpha), 2);
+        public static float Cos2(float alpha) => Pow(Cos(alpha), 2);
+        public static float Tan2(float alpha) => Pow(Tan(alpha), 2);
+        public static float Atan2(float y, float x) => MathF.Atan2(y, x);
+        public static float Sqrt(float x) => MathF.Sqrt(x);
+
+        public static float Max(float a, float b) => a > b ? a : b;
+        public static float Min(float a, float b) => a < b ? a : b;
+        public static int Max(int a, int b) => a > b ? a : b;
+        public static int Min(int a, int b) => a < b ? a : b;
     }
 
     /// <summary>

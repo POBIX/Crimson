@@ -27,7 +27,10 @@ namespace Crimson
 
         private Dictionary<char, Character> characters = new();
 
-        public int LineHeight { get; private set; }
+        // height is in 1/64 of a point. divide it by 64 (bitshift by 6) to get the real value.
+        public int LineHeight => (lineHeight >> 6) + HeightMargin;
+        private int lineHeight;
+        public int HeightMargin { get; set; } = 4;
 
         /// <param name="path">The path to the font file. Does not accept system font names.</param>
         /// <param name="size">The font's size in points.</param>
@@ -37,7 +40,9 @@ namespace Crimson
             using Library lib = new();
             using Face face = new(lib, path);
             face.SetPixelSizes(0, (uint)size);
-            LineHeight = face.Size.Metrics.Height.Value;
+            lineHeight = face.Size.Metrics.Height.Value;
+
+            Console.WriteLine(lineHeight >> 6);
             Gl.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
 
             // load first 128 ASCII characters.
@@ -77,6 +82,41 @@ namespace Crimson
 
         public Character this[char c] => characters[c];
 
+        /// <summary>
+        /// Returns the size, in pixels, of a specified string when drawn using this font.
+        /// </summary>
+        /// <param name="text">The text to measure</param>
+        public Vector2 MeasureText(string text)
+        {
+            float maxW = -1;
+            float w = 0;
+            float h = 0;
+
+            foreach (char c in text)
+            {
+                if (c == '\n')
+                {
+                    h += LineHeight;
+                    maxW = Mathf.Max(maxW, w);
+                    w = 0;
+                    continue;
+                }
+
+                w += MeasureChar(c);
+            }
+            h += this[text[0]].size.y * 2; // when we're done, add the height of the final line, without any room for a line break.
+
+            maxW = Mathf.Max(maxW, w);
+            return new(maxW, h);
+        }
+
+        public static int MeasureChar(Character c)
+        {
+            // advance is in 1/64 of a point. divide it by 64 (bitshift by 6) to get the real value.
+            return (c.advance >> 6) * 2;
+        }
+        public int MeasureChar(char c) => MeasureChar(this[c]);
+
         private void ReleaseUnmanagedResources()
         {
             foreach (var (_, c) in characters)
@@ -92,6 +132,19 @@ namespace Crimson
         ~Font() => ReleaseUnmanagedResources();
     }
 
+    public enum HAlignment
+    {
+        Left,
+        Center,
+        Right
+    }
+    public enum VAlignment
+    {
+        Top,
+        Center,
+        Bottom
+    }
+
     public class Label : IDrawableObject, IDisposable
     {
         public Material Material { get; set; } = new();
@@ -104,6 +157,9 @@ namespace Crimson
         public float Rotation { get; set; }
         public Color Color { get; set; } = Color.White;
         public Vector2 Scale { get; set; } = Vector2.One;
+        public Vector2 Size { get; set; }
+        public HAlignment HAlignment { get; set; } = HAlignment.Left;
+        public VAlignment VAlignment { get; set; } = VAlignment.Top;
 
         private static float[] vertices =
         {
@@ -117,6 +173,7 @@ namespace Crimson
 
         void ISceneObject.Start()
         {
+            Material ??= new();
             Material.InitShaderText(Resources.Read("shaders/text.vert"), Resources.Read("shaders/text.frag"));
 
             Material.FeedBuffer(vertices);
@@ -133,34 +190,51 @@ namespace Crimson
         {
             Matrix gMat = Camera.GetTransform(Position, Rotation, Vector2.One);
 
-            float x = 0;
-            float y = 0;
-            foreach (char c in Text)
+            string[] lines = Text.Split('\n');
+
+            float textHeight = Font.MeasureText(Text).y * Scale.y;
+            float y = VAlignment switch
             {
-                if (c == '\n')
+                VAlignment.Top => Font.LineHeight - Font.HeightMargin,
+                VAlignment.Center => (Size.y - textHeight) / 2,
+                VAlignment.Bottom => Size.y - textHeight,
+                _ => throw new ArgumentOutOfRangeException(nameof(VAlignment))
+            };
+            foreach (string line in lines)
+            {
+                float lineWidth = Font.MeasureText(line).x * Scale.x;
+                float x = HAlignment switch
                 {
-                    y += Font.LineHeight / 64 * Scale.y * 2f;
-                    x = 0;
-                    continue;
+                    HAlignment.Left => 0,
+                    HAlignment.Center => (Size.x - lineWidth) / 2,
+                    HAlignment.Right => Size.x - lineWidth,
+                    _ => throw new ArgumentOutOfRangeException(nameof(HAlignment))
+                };
+
+                foreach (char c in line)
+                {
+                    Font.Character ch = Font[c];
+                    Vector2 s = ch.size * Scale;
+                    Vector2 p = new(
+                        x + (ch.size.x + ch.bearing.x * 2) * Scale.x,
+                        y + (ch.size.y - ch.bearing.y * 2) * Scale.y // 3 * makes the origin be the top of the line instead of the bottom.
+                    );
+
+                    x += Font.MeasureChar(ch) * Scale.x;
+
+                    Matrix t = gMat *
+                               Matrix.Translation(new(p, 0)) *
+                               Matrix.Scaling(new(s, 1));
+
+                    Material.SetUniform("TRANSFORM", t, false);
+                    ch.Bind();
+                    Material.SetUniform("TEXTURE", 0);
+                    Material.SetUniform("COLOR", Color);
+
+                    Graphics.DrawArrays(PrimitiveType.Triangles, 0, 6);
                 }
 
-                Font.Character ch = Font[c];
-                Vector2 s = ch.size * Scale;
-                Vector2 p = new(x + ch.bearing.x + ch.size.x * Scale.x, y + (ch.size.y - ch.bearing.y * 2) * Scale.y);
-
-                // advance is in 1/64 of a point. divide it by 64 (bitshift by 6) to get the real value.
-                x += (ch.advance >> 6) * Scale.x * 2;
-
-                Matrix t = gMat *
-                           Matrix.Translation(new(p, 0)) *
-                           Matrix.Scaling(new(s, 1));
-
-                Material.SetUniform("TRANSFORM", t, false);
-                ch.Bind();
-                Material.SetUniform("TEXTURE", 0);
-                Material.SetUniform("COLOR", Color);
-
-                Graphics.DrawArrays(PrimitiveType.Triangles, 0, 6);
+                y += Font.LineHeight * Scale.y;
             }
         }
 
