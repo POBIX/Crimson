@@ -233,12 +233,12 @@ namespace Crimson
 
         private static void DrawOrQueue(DrawInfo i)
         {
-            if (Engine.Drawing)
+            /*if (Engine.Drawing)
             {
                 if (Material.Current != material) material.Use();
                 ExecuteDraw(i);
             }
-            else Queue.Enqueue(i);
+            else*/ Queue.Enqueue(i);
         }
 
         public static void DrawPoint(Vector2 point, Color color) =>

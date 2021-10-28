@@ -27,9 +27,6 @@ namespace Crimson
         /// <summary> The material currently being used. </summary>
         public static Material Current { get; private set; }
 
-        /// <summary> The time elapsed since the Material was created. </summary>
-        public float Time { get; private set; }
-
         public Material()
         {
             program = Gl.CreateProgram();
@@ -116,12 +113,6 @@ namespace Crimson
         /// </summary>
         public bool IsShaderSet(ShaderType type) => shaders.ContainsKey(type);
 
-        public override void Draw()
-        {
-            base.Draw();
-            UpdateUniforms();
-        }
-
         public void BindVBO() => Gl.BindBuffer(BufferTarget.ArrayBuffer, vbo);
 
         /// <summary>
@@ -161,17 +152,6 @@ namespace Crimson
                 return true;
             }
             return false;
-        }
-
-        /// <summary>
-        /// Sets and updates TIME, CAM_SIZE and SCREEN_SIZE. Automatically called if the material is attached to an entity.
-        /// </summary>
-        public void UpdateUniforms()
-        {
-            Time += Engine.FrameTime;
-            SetUniform("TIME", Time);
-            SetUniform("CAM_SIZE", Camera.CurrentResolution);
-            SetUniform("SCREEN_SIZE", Engine.Size);
         }
 
         /// <summary>

@@ -1670,6 +1670,11 @@ namespace Crimson
         public static Vector4 Forward => new(0, 0, 1, 0);
         public static Vector4 Backward => new(0, 0, -1, 0);
 
-        public Color ToColor() => new(x, y, z, w);
+        /// <summary>
+        /// Returns a <seealso cref="Color"/>.
+        /// x, y, z, w values treated as rgba values between 0 and 1.
+        /// </summary>
+        /// <returns></returns>
+        public Color ToColor() => Color.Float(x, y, z, w);
     }
 }

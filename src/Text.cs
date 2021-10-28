@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using OpenGL;
 using SharpFont;
@@ -88,6 +89,7 @@ namespace Crimson
         /// <param name="text">The text to measure</param>
         public Vector2 MeasureText(string text)
         {
+            if (text.Length == 0) return Vector2.Zero;
             float maxW = -1;
             float w = 0;
             float h = 0;
@@ -112,7 +114,7 @@ namespace Crimson
 
         public static int MeasureChar(Character c)
         {
-            // advance is in 1/64 of a point. divide it by 64 (bitshift by 6) to get the real value.
+            // units are 1/64 of a point. divide it by 64 (bitshift by 6) to get the value in pixels.
             return (c.advance >> 6) * 2;
         }
         public int MeasureChar(char c) => MeasureChar(this[c]);
@@ -145,6 +147,23 @@ namespace Crimson
         Bottom
     }
 
+    public struct WrapSettings
+    {
+        /// <summary> Only wrap after these characters </summary>
+        public IList<char> WrapOn { get; set; }
+        /// <summary> Force a line break on these characters </summary>
+        public IList<char> BreakOn { get; set; }
+        /// <summary> Ignore these characters </summary>
+        public IList<char> Ignore { get; set; }
+
+        public WrapSettings(IList<char> wrapOn, IList<char> breakOn, IList<char> ignore)
+        {
+            WrapOn = wrapOn;
+            BreakOn = breakOn;
+            Ignore = ignore;
+        }
+    }
+
     public class Label : IDrawableObject, IDisposable
     {
         public Material Material { get; set; } = new();
@@ -160,6 +179,14 @@ namespace Crimson
         public Vector2 Size { get; set; }
         public HAlignment HAlignment { get; set; } = HAlignment.Left;
         public VAlignment VAlignment { get; set; } = VAlignment.Top;
+
+        public bool Wrap { get; set; } = true;
+        public WrapSettings WrapSettings { get; set; } = new()
+        {
+            WrapOn = " ,.:;])<>\\|/`~!@#$%^&*-_+=?".ToCharArray(),
+            BreakOn = new[] { '\n' },
+            Ignore = new[] { '\r' }
+        };
 
         private static float[] vertices =
         {
@@ -186,13 +213,85 @@ namespace Crimson
             Material.VertexAttribPointer(tcLoc, new(2 * sizeof(float)), 4);
         }
 
+        private float CalcStartX(string line)
+        {
+            if (HAlignment == HAlignment.Left) return 0;
+            float lineWidth = Font.MeasureText(line).x * Scale.x;
+            return HAlignment switch
+            {
+                HAlignment.Center => (Size.x - lineWidth) / 2,
+                HAlignment.Right => Size.x - lineWidth,
+                _ => throw new Exception()
+            };
+        }
+
+        private IEnumerable<string> WrapText(string text)
+        {
+            static IEnumerable<string> Split(string s, IList<char> split, IList<char> keep, IList<char> ignore)
+            {
+                string word = "";
+                foreach (char c in s)
+                {
+                    if (split.Contains(c))
+                    {
+                        yield return word + c;
+                        word = "";
+                    }
+                    else if (keep.Contains(c))
+                    {
+                        yield return word;
+                        word = "";
+                        yield return c.ToString();
+                    }
+                    else if (!ignore.Contains(c))
+                        word += c;
+                }
+                yield return word;
+            }
+
+            float spaceWidth = Font.MeasureChar(' ');
+
+            float x = 0;
+            string line = "";
+            foreach (string word in Split(text, WrapSettings.WrapOn, WrapSettings.BreakOn, WrapSettings.Ignore))
+            {
+                if (word.Length == 0) continue;
+
+                if (WrapSettings.BreakOn.Contains(word[0])) // if we should force break on this line
+                {
+                    x = 0;
+                    continue;
+                }
+
+                // if there's whitespace at the end of the word and it causes the line to overflow (whitespace has a width),
+                // we should ignore it as you won't be able to actually see anything wrong.
+                int spaces;
+                // count the number of whitespaces on the right
+                for (spaces = 0;
+                    spaces < word.Length && char.IsWhiteSpace(word[word.Length - 1 - spaces]);
+                    spaces++)
+                { }
+
+                float width = Font.MeasureText(word).x - spaces * spaceWidth;
+
+                if (x + width > Size.x && line != string.Empty)
+                {
+                    yield return line;
+                    x = 0;
+                    line = "";
+                }
+                x += width + spaces * spaceWidth; // correct for the removed whitespace
+                line += word;
+            }
+            yield return line;
+        }
+
         void IDrawableObject.Draw()
         {
             Matrix gMat = Camera.GetTransform(Position, Rotation, Vector2.One);
 
-            string[] lines = Text.Split('\n');
-
             float textHeight = Font.MeasureText(Text).y * Scale.y;
+
             float y = VAlignment switch
             {
                 VAlignment.Top => Font.LineHeight - Font.HeightMargin,
@@ -200,16 +299,9 @@ namespace Crimson
                 VAlignment.Bottom => Size.y - textHeight,
                 _ => throw new ArgumentOutOfRangeException(nameof(VAlignment))
             };
-            foreach (string line in lines)
+            foreach (string line in Wrap ? WrapText(Text) : Text.Split('\n'))
             {
-                float lineWidth = Font.MeasureText(line).x * Scale.x;
-                float x = HAlignment switch
-                {
-                    HAlignment.Left => 0,
-                    HAlignment.Center => (Size.x - lineWidth) / 2,
-                    HAlignment.Right => Size.x - lineWidth,
-                    _ => throw new ArgumentOutOfRangeException(nameof(HAlignment))
-                };
+                float x = CalcStartX(line.Trim());
 
                 foreach (char c in line)
                 {
@@ -241,6 +333,12 @@ namespace Crimson
         void ISceneObject.Update(float delta) { }
         void ISceneObject.Frame(float delta) { }
         void ISceneObject.SetScene(Scene value) => Scene = value;
+
+        public Rect GetBoundingBox()
+        {
+            Vector2 s = Size * Scale;
+            return new(Position + s / 2, s);
+        }
 
         protected virtual void Dispose(bool disposing)
         {

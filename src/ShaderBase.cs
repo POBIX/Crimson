@@ -9,6 +9,9 @@ namespace Crimson
     {
         private Dictionary<string, int> uniformLocs = new();
 
+        /// <summary> The time elapsed since the Material was created. </summary>
+        public float Time { get; private set; }
+
         protected internal uint program;
 
         protected ShaderBase() => program = Gl.CreateProgram();
@@ -18,18 +21,18 @@ namespace Crimson
             if (s != "") Console.WriteLine(s);
         }
 
-        protected const int LogLength = 2048;
+        protected const int MaxLogLength = 2048;
         protected static string GetShaderLog(uint shader)
         {
-            var sb = new StringBuilder(LogLength);
-            Gl.GetShaderInfoLog(shader, LogLength, out _, sb);
+            var sb = new StringBuilder(MaxLogLength);
+            Gl.GetShaderInfoLog(shader, MaxLogLength, out _, sb);
             return sb.ToString();
         }
 
         protected static string GetProgramLog(uint program)
         {
-            var sb = new StringBuilder(LogLength);
-            Gl.GetProgramInfoLog(program, LogLength, out _, sb);
+            var sb = new StringBuilder(MaxLogLength);
+            Gl.GetProgramInfoLog(program, MaxLogLength, out _, sb);
             return sb.ToString();
         }
 
@@ -97,15 +100,28 @@ namespace Crimson
             Gl.ProgramUniform1(program, location, value ? 1 : 0);
         }
 
-        private void ReleaseUnmanagedResources()
+        /// <summary>
+        /// Sets and updates TIME, CAM_SIZE and SCREEN_SIZE. Automatically called if attached to an entity.
+        /// </summary>
+        public void UpdateUniforms()
         {
-            Gl.DeleteProgram(program);
+            Time += Engine.FrameTime;
+            SetUniform("TIME", Time);
+            SetUniform("CAM_SIZE", Camera.CurrentResolution);
+            SetUniform("SCREEN_SIZE", Engine.Size);
         }
 
-        protected virtual void Dispose(bool disposing)
+        public override void Draw()
         {
-            ReleaseUnmanagedResources();
+            base.Draw();
+            UpdateUniforms();
         }
+
+        private void ReleaseUnmanagedResources() =>
+            Gl.DeleteProgram(program);
+
+        protected virtual void Dispose(bool disposing) =>
+            ReleaseUnmanagedResources();
 
         public void Dispose()
         {

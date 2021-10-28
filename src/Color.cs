@@ -14,7 +14,7 @@ namespace Crimson
         public float b;
         public float a;
 
-        public Color(float r, float g, float b, float a = 1)
+        private Color(float r, float g, float b, float a)
         {
             this.r = r;
             this.g = g;
@@ -22,16 +22,50 @@ namespace Crimson
             this.a = a;
         }
 
+        /// <summary>
+        /// Creates a color with floating point values (between 0 and 1).
+        /// </summary>
+        /// <param name="r">Red</param>
+        /// <param name="g">Green</param>
+        /// <param name="b">Blue</param>
+        /// <param name="a">Alpha</param>
+        public static Color Float(float r, float g, float b, float a = 1) =>
+            new(r, g, b, a);
+
+        /// <summary>
+        /// Creates a color with byte values (between 0 and 255).
+        /// </summary>
+        /// <param name="r">Red</param>
+        /// <param name="g">Green</param>
+        /// <param name="b">Blue</param>
+        /// <param name="a">Alpha</param>
+        public static Color Byte(int r, int g, int b, int a = 255) =>
+            new(r / 255f, g / 255f, b / 255f, a / 255f);
+
+        /// <summary>
+        /// Creates a color from a <code>hex code</code>.
+        /// Example usage: <code>Color.Code(0xFFFFFF);</code> produces white.
+        /// </summary>
+        /// <param name="code"></param>
+        /// <returns></returns>
+        public static Color Code(int code)
+        {
+            int r = (code >> 16) & 255;
+            int g = (code >> 8) & 255;
+            int b = code & 255;
+            return Byte(r, g, b);
+        }
+
         public SColor ToSystem() => SColor.FromArgb((int)(a * 255), (int)(r * 255), (int)(g * 255), (int)(b * 255));
 
-        public static Color White => new(1, 1, 1);
-        public static Color Black => new(0, 0, 0);
-        public static Color Transparent => new(0, 0, 0, 0);
-        public static Color None => new(0, 0, 0, 0);
-        public static Color Blue => new(0, 0, 1);
-        public static Color Green => new(0, 1, 0);
-        public static Color Red => new(1, 0, 0);
-        public static Color Yellow => new(1, 1, 0);
+        public static Color White => Float(1, 1, 1);
+        public static Color Black => Float(0, 0, 0);
+        public static Color Transparent => Float(0, 0, 0, 0);
+        public static Color None => Float(0, 0, 0, 0);
+        public static Color Blue => Float(0, 0, 1);
+        public static Color Green => Float(0, 1, 0);
+        public static Color Red => Float(1, 0, 0);
+        public static Color Yellow => Float(1, 1, 0);
 
         public override bool Equals(object obj) => obj is Color c && Equals(c);
 
@@ -66,17 +100,12 @@ namespace Crimson
             throw new FormatException($"Color {str} in unexpected format");
         }
 
-        public static Color Random()
-        {
-            Random rnd = new();
-            return new(rnd.Next(0, 255) / 255f, rnd.Next(0, 255) / 255f, rnd.Next(0, 255) / 255f);
-        }
+        private static Random rnd = new();
+        public static Color Random() =>
+            Byte(rnd.Next(0, 255), rnd.Next(0, 255), rnd.Next(0, 255));
 
-        public static Color RandomAlpha()
-        {
-            Random rnd = new();
-            return new(rnd.Next(0, 255) / 255f, rnd.Next(0, 255) / 255f, rnd.Next(0, 255) / 255f, rnd.Next(0, 255) / 255f);
-        }
+        public static Color RandomAlpha() =>
+            Byte(rnd.Next(0, 255), rnd.Next(0, 255), rnd.Next(0, 255), rnd.Next(0, 255));
 
         public static Color operator +(Color a, Color b) => new(a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a);
         public static Color operator -(Color a, Color b) => new(a.r - b.r, a.g - b.g, a.b - b.b, a.a - b.a);
