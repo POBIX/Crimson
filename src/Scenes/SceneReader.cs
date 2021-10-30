@@ -51,16 +51,16 @@ namespace Crimson.Scenes
                 return false;
             });
 
-            RegisterSetHandler((string source, out CollisionLayer result) =>
-            {
-                if (ulong.TryParse(source, out ulong l))
-                {
-                    result = new(l);
-                    return true;
-                }
-                result = new(0);
-                return false;
-            });
+            // RegisterSetHandler((string source, out CollisionLayer result) =>
+            // {
+            //     if (ulong.TryParse(source, out ulong l))
+            //     {
+            //         result = new(l);
+            //         return true;
+            //     }
+            //     result = new(0);
+            //     return false;
+            // });
         }
 
         public static IEnumerable<ISceneObject> LoadScene(string text)

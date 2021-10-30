@@ -44,6 +44,8 @@ namespace Crimson
 
         public Vector2 Size => Texture.Size;
 
+        public Vector2 Offset { get; set; }
+
         private Rect source;
         public Rect Source => source;
 
@@ -159,7 +161,7 @@ namespace Crimson
             if (Texture == null) return;
 
             Vector2 scale = Clip.Size / Frames * Scale * flip;
-            Material.SetUniform("TRANSFORM", Camera.GetTransform(Position, Rotation, scale), false);
+            Material.SetUniform("TRANSFORM", Camera.GetTransform(Position + Offset, Rotation, scale), false);
 
             Material.BindVAO();
 

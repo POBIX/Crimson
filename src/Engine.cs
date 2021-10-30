@@ -264,6 +264,7 @@ namespace Crimson
                 Mouse.USingleton.Update();
 
                 Scene.Update(PhysicsStep);
+
                 accumulator -= PhysicsStep;
             }
 
