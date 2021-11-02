@@ -36,6 +36,9 @@ namespace Crimson
         public uint ID { get; }
         private static uint idCounter = 0;
 
+        public event Action<Component> ComponentAdded;
+        public event Action<Component> ComponentRemoved;
+
         public Entity() => ID = idCounter++;
 
         /// <summary>
@@ -74,6 +77,7 @@ namespace Crimson
             if (Awoke) c.Awake();
             if (Started) c.Start();
             components.Add(c);
+            ComponentAdded?.Invoke(c);
         }
 
         /// <summary>
@@ -93,11 +97,12 @@ namespace Crimson
         /// </summary>
         public void RemoveComponent<T>() where T : class
         {
+            // ReSharper disable once ForCanBeConvertedToForeach (modifying collection)
             for (int i = 0; i < components.Count; i++)
             {
                 if (components[i] is T)
                 {
-                    components.Remove(components[i]);
+                    RemoveComponent(components[i]);
                     break;
                 }
             }
@@ -107,16 +112,22 @@ namespace Crimson
         /// Remove a specific component from the entity.
         /// </summary>
         /// <param name="c">The component to remove</param>
-        public void RemoveComponent(Component c) => components.Remove(c);
+        public void RemoveComponent(Component c)
+        {
+            components.Remove(c);
+            ComponentRemoved?.Invoke(c);
+        }
 
         /// <summary>
         /// Removes all components of type <typeparamref name="T"/>
         /// </summary>
         public void RemoveComponents<T>() where T : class
         {
+            // ReSharper disable once ForCanBeConvertedToForeach (modifying collection)
             for (int i = 0; i < components.Count; i++)
             {
-                if (components[i] is T) components.Remove(components[i]);
+                if (components[i] is T)
+                    RemoveComponent(components[i]);
             }
         }
 
