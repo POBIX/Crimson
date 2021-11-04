@@ -7,30 +7,96 @@ namespace Crimson
 {
     public class Controller : Component
     {
-        private ICollide collider;
+        private List<ICollide> colliders;
 
         public override void Start()
         {
             base.Start();
-            collider = GetComponent<ICollide>();
+            colliders = GetComponents<ICollide>().ToList();
+            Parent.ComponentAdded += c =>
+            {
+                if (c is ICollide l) colliders.Add(l);
+            };
+            Parent.ComponentRemoved += c =>
+            {
+                if (c is ICollide l) colliders.Remove(l);
+            };
         }
 
         public void Move(Vector2 velocity)
         {
             List<object> collisions = new();
-            foreach (ICollide c in Scene.GetComponentsOfType<ICollide>())
+            // list and not IEnumerable in order to avoid multiple enumeration
+            List<ICollide> sceneColliders = Scene.GetComponentsOfType<ICollide>().ToList();
+            foreach (ICollide collider in colliders)
             {
-                if (c == collider) continue;
-                if (collider.IsCollidingAny(collider, c, velocity, out object info))
-                    collisions.Add(info);
+                foreach (ICollide c in sceneColliders)
+                {
+                    if (c == collider) continue;
+                    if (collider.IsCollidingAny(collider, c, velocity, out object info))
+                        collisions.Add(info);
+                }
+                collider.RespondAny(this, velocity, collisions);
             }
-            collider.RespondAny(this, velocity, collisions);
+        }
+    }
+
+    public class Trigger : Component
+    {
+        private List<ICollide> colliders;
+
+        private HashSet<Entity> collisions = new();
+
+        public event Action<Entity> Entered;
+        public event Action<Entity> Exited;
+
+        public override void Start()
+        {
+            base.Start();
+            colliders = GetComponents<ICollide>().ToList();
+            Parent.ComponentAdded += c =>
+            {
+                if (c is ICollide l) colliders.Add(l);
+            };
+            Parent.ComponentRemoved += c =>
+            {
+                if (c is ICollide l) colliders.Remove(l);
+            };
+        }
+
+        public override void Update(float delta)
+        {
+            base.Update(delta);
+
+            // list and not IEnumerable in order to avoid multiple enumeration
+            List<ICollide> sceneColliders = Scene.GetComponentsOfType<ICollide>().ToList();
+            foreach (ICollide collider in colliders)
+            {
+                foreach (ICollide c in sceneColliders)
+                {
+                    if (c == collider) continue;
+                    Entity e = ((Component)c).Parent;
+                    bool colliding = collider.IsCollidingAny(collider, c, Vector2.Zero, out _);
+                    bool contains = collisions.Contains(e);
+                    if (colliding && !contains)
+                    {
+                        Entered?.Invoke(e);
+                        collisions.Add(e);
+                    }
+                    else if (!colliding && contains)
+                    {
+                        Exited?.Invoke(e);
+                        collisions.Remove(e);
+                    }
+                }
+            }
         }
     }
 
     /// <summary> Used internally. You're probably looking for the generic version. </summary>
     public interface ICollide
     {
+        public bool Block { get; set; }
         internal bool IsCollidingAny(ICollide a, ICollide b, Vector2 velocity, out object info);
         internal void RespondAny(Controller body, Vector2 velocity, List<object> collisions);
     }
@@ -60,13 +126,16 @@ namespace Crimson
         public Vector2 Normal { get; set; }
         public float Time { get; set; }
         public BoxCollider Target { get; set; }
+        public Entity Entity { get; set; }
     }
 
     public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxCollisionInfo>
     {
-        public Rect Bounds => new(Position, Size);
+        public Rect Bounds => new(Position + Offset, Size);
         public Vector2 Offset { get; set; }
         public Vector2 Size { get; set; }
+
+        public bool Block { get; set; } = true;
 
         private static bool GetBroadphase(Vector2 pos, Rect rect, Vector2 vel)
         {
@@ -83,7 +152,7 @@ namespace Crimson
 
         public bool IsColliding(BoxCollider source, BoxCollider target, Vector2 velocity, out BoxCollisionInfo info)
         {
-            info = new() { Target = target };
+            info = new() { Target = target, Entity = target.Parent };
             Rect a = source.Bounds;
             Rect b = new(target.Position - target.Size / 2 - a.Size / 2, target.Size + a.Size);
             Vector2 origin = a.Position;
@@ -119,12 +188,13 @@ namespace Crimson
 
             foreach (BoxCollisionInfo info in collisions)
             {
+                if (!info.Target.Block) continue;
                 // if multiple collisions were registered this frame, and one of them was going into a corner,
                 // ignore it (or else you would get stuck on corners between blocks).
                 // only one collision means you were going into a real corner, so we shouldn't let you pass.
                 if (info.Normal == Vector2.Zero && collisions.Count != 1) continue;
 
-                // stop body from actually moving
+                // stop body from actually moving into the collider
                 body.Position += velocity * info.Time;
                 float rem = 1 - info.Time;
                 float dot = (velocity.x * info.Normal.y + velocity.y * info.Normal.x) * rem;
