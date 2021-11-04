@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using GLFW;
 using GLMouse = GLFW.MouseButton;
 
@@ -124,168 +125,247 @@ namespace Crimson
         Forward = GLMouse.Button5,
     }
 
-    public abstract class InputBase<T> where T : unmanaged, Enum
+    internal struct KeyState
     {
-        protected byte[] prevState;
-        protected byte[] currState;
-        protected byte[] nextState;
+        public byte[] prev;
+        public byte[] curr;
+        public byte[] next;
 
-        protected InputBase(int scancodes)
+        private int size;
+
+        public KeyState(int size)
         {
-            prevState = new byte[scancodes];
-            currState = new byte[scancodes];
-            nextState = new byte[scancodes];
+            this.size = size;
+            prev = new byte[size];
+            curr = new byte[size];
+            next = new byte[size];
         }
 
-        internal virtual void Update()
+        public void Update()
         {
-            prevState = currState.Clone() as byte[];
-            currState = nextState.Clone() as byte[];
+            Array.Copy(curr, prev, size);
+            Array.Copy(next, curr, size);
+        }
+    }
+
+    public abstract class InputBase
+    {
+        internal KeyState state;
+        internal KeyState update;
+        internal KeyState frame;
+
+        /// <param name="scancodeMax">The highest scancode in <typeparamref name="T"/></param>
+        protected InputBase(int scancodeMax)
+        {
+            update = new(scancodeMax);
+            frame = new(scancodeMax);
+            state = update;
         }
 
-        private static bool IsKeySet(byte[] arr, T key)
+        internal virtual void Init() { }
+
+        internal virtual void Update() =>
+            state.Update();
+    }
+
+    public abstract class InputBase<T> : InputBase where T : unmanaged, Enum
+    {
+        protected static InputBase<T> Singleton { get; private set; }
+
+        /// <inheritdoc cref="InputBase(int)"/>
+        protected InputBase(int scancodeMax) : base(scancodeMax)
         {
-            // must cast to object then int because c# is a good language with truly excellent generics.
-            int k = (int)(object)key;
+            Singleton = this;
+        }
+
+        private static unsafe bool IsKeySet(byte[] arr, T key)
+        {
+            int k = *(int*)&key; // c# has some horrible generics. this is the best way to cast a generic enum to int.
             int index = k / 8; // get the index of the byte in the array that the key is in
             int bit = k % 8; // get its specific bit number
             return ((arr[index] >> bit) & 1) == 1; // check whether that bit is set
         }
 
-        protected static void SetKey(byte[] arr, T key, bool value)
+        protected static unsafe void SetKey(byte[] arr, T key, bool value)
         {
-            int k;
-            unsafe
-            {
-                // C# has some truly excellent generics. If you want to get the actual int representation of the enum,
-                // you either have to say "int k = (int)(object)key", which causes boxing, or do this.
-                // thank you c#.
-                k = *(int*)&key;
-            }
+            int k = *(int*)&key; // c# has some horrible generics. this is the best way to cast a generic enum to int.
             int index = k / 8; // get the index of the byte in the array that the key is in
             int bit = k % 8; // get its specific bit number
             int v = value ? 1 : 0;
-            // modified the array to have that bit set to the correct value, i think
-            // i don't know why this would work any more than you do.
+            // modify the array to have that bit set to the correct value
             arr[index] = (byte)(arr[index] & ~(1 << bit) | (v << bit));
         }
 
-        protected bool IsKeyDown(T key) => IsKeySet(currState, key);
-        protected bool IsKeyUp(T key) => !IsKeySet(currState, key);
-        protected bool IsKeyPressed(T key) => IsKeySet(currState, key) && !IsKeySet(prevState, key);
-        protected bool IsKeyReleased(T key) => !IsKeySet(currState, key) && IsKeySet(prevState, key);
+        /// <summary> Is <paramref name="key"/> being held down? </summary>
+        public static bool IsDown(T key) => IsKeySet(Singleton.state.curr, key);
+        /// <summary> Is <paramref name="key"/> not held down? </summary>
+        public static bool IsUp(T key) => !IsKeySet(Singleton.state.curr, key);
+        /// <summary>
+        /// Has <paramref name="key"/> just been pressed?
+        /// Returns true only for the first frame in which the button is held down.
+        /// </summary>
+        public static bool IsPressed(T key) => IsKeySet(Singleton.state.curr, key) && !IsKeySet(Singleton.state.prev, key);
+        /// <summary>
+        /// Has <paramref name="key"/> just been released?
+        /// Returns true only for the first frame in which the button is let go.
+        /// </summary>
+        public static bool IsReleased(T key) => !IsKeySet(Singleton.state.curr, key) && IsKeySet(Singleton.state.prev, key);
+    }
+
+    public static class Input
+    {
+        private static List<InputBase> sources = new();
+
+        private static Dictionary<string, List<Key>> actions = new();
+
+        internal static void Register(InputBase i) => sources.Add(i);
+
+        internal static void Init()
+        {
+            Register(new Keyboard());
+            Register(new Mouse());
+
+            foreach (InputBase i in sources)
+                i.Init();
+        }
+
+        internal static void Update()
+        {
+            foreach (InputBase i in sources)
+                i.Update();
+        }
+
+        internal static void SetUpdate()
+        {
+            foreach (InputBase i in sources)
+                i.state = i.update;
+        }
+
+        internal static void SetFrame()
+        {
+            foreach (InputBase i in sources)
+                i.state = i.frame;
+        }
+
+        public static void AddAction(string name, params Key[] keys)
+        {
+            if (actions.ContainsKey(name))
+            {
+                foreach (Key key in keys)
+                    actions[name].Add(key);
+            }
+            else actions.Add(name, keys.ToList());
+        }
+
+        public static bool IsDown(string action)
+        {
+            foreach (Key key in actions[action])
+            {
+                if (Keyboard.IsDown(key))
+                    return true;
+            }
+            return false;
+        }
+
+        public static bool IsUp(string action)
+        {
+            foreach (Key key in actions[action])
+            {
+                if (Keyboard.IsUp(key))
+                    return true;
+            }
+            return false;
+        }
+
+        public static bool IsPressed(string action)
+        {
+            foreach (Key key in actions[action])
+            {
+                if (Keyboard.IsPressed(key))
+                    return true;
+            }
+            return false;
+        }
+
+        public static bool IsReleased(string action)
+        {
+            foreach (Key key in actions[action])
+            {
+                if (Keyboard.IsReleased(key))
+                    return true;
+            }
+            return false;
+        }
     }
 
     public class Keyboard : InputBase<Key>
     {
-        // 44 because we have 348 scancodes.
-        // we use each bit as a bool, 348 / 8 = 43.5 -> 44.
-        private Keyboard() : base(44) =>
-            Glfw.SetKeyCallback(Engine.handle, callback);
+        // this is a field in order to prevent garbage collection of the delegate.
+        private static readonly KeyCallback Callback = InputCallback;
 
-        // this field exists because of a "callback was made on a garbage collected delegate" exception
-        private KeyCallback callback = InputCallback;
+        internal Keyboard() : base(348) { }
 
-        internal static Keyboard USingleton { get; private set; }
-        internal static Keyboard FSingleton { get; private set; }
-        internal static Keyboard Singleton { get; set; }
-
-        internal static void Init()
+        internal override void Init()
         {
-            USingleton = new Keyboard();
-            FSingleton = new Keyboard();
-        }
-
-        internal override void Update()
-        {
-            base.Update();
-            Singleton = this;
+            base.Init();
+            Glfw.SetKeyCallback(Engine.handle, Callback);
         }
 
         private static void InputCallback(IntPtr window, Keys key, int scancode, InputState state, ModifierKeys mods)
         {
-            SetKey(USingleton.nextState, (Key)key, state != InputState.Release);
-            SetKey(FSingleton.nextState, (Key)key, state != InputState.Release);
+            SetKey(Singleton.update.next, (Key)key, state != InputState.Release);
+            SetKey(Singleton.frame.next, (Key)key, state != InputState.Release);
         }
-
-        public static bool IsDown(Key key) => Singleton.IsKeyDown(key);
-        public static bool IsUp(Key key) => Singleton.IsKeyUp(key);
-        public static bool IsPressed(Key key) => Singleton.IsKeyPressed(key);
-        public static bool IsReleased(Key key) => Singleton.IsKeyReleased(key);
     }
 
     public class Mouse : InputBase<MouseButton>
     {
-        // 1 because we have 8 scancodes. we use each bit as a bool, 8 / 8 = 1.
-        private Mouse() : base(1) =>
-            Glfw.SetMouseButtonCallback(Engine.handle, callback);
+        internal Mouse() : base(8) { }
 
-        // this field exists because of a "callback was made on a garbage collected delegate" exception
-        private MouseButtonCallback callback = InputCallback;
+        // this is a field in order to prevent garbage collection of the delegate.
+        private static readonly MouseButtonCallback Callback = InputCallback;
 
         private static double x, y;
+
         /// <summary> The mouse's X position relative to the camera. </summary>
         public static float X => (float)x + Camera.Current?.Origin.x ?? GlobalX;
+
         /// <summary> The mouse's Y position relative to the camera. </summary>
         public static float Y => (float)y + Camera.Current?.Origin.y ?? GlobalY;
+
         /// <summary> The mouse's position relative to the camera. </summary>
         public static Vector2 Position => new(X, Y);
 
         /// <summary> The mouse's X position relative to the window. </summary>
         public static float GlobalX => (float)x;
+
         /// <summary> The mouse's Y position relative to the window. </summary>
         public static float GlobalY => (float)y;
+
         /// <summary> The mouse's position relative to the window. </summary>
         public static Vector2 GlobalPosition => new(GlobalX, GlobalY);
 
-        internal static Mouse FSingleton { get; private set; }
-        internal static Mouse USingleton { get; private set; }
-        internal static Mouse Singleton { get; set; }
-
-        internal static void Init()
+        internal override void Init()
         {
-            FSingleton = new Mouse();
-            USingleton = new Mouse();
+            base.Init();
+            Glfw.SetMouseButtonCallback(Engine.handle, Callback);
         }
 
         private static void InputCallback(IntPtr window, GLMouse button, InputState state, ModifierKeys mods)
         {
-            SetKey(FSingleton.nextState, (MouseButton)button, state != InputState.Release);
-            SetKey(USingleton.nextState, (MouseButton)button, state != InputState.Release);
+            SetKey(Singleton.update.next, (MouseButton)button, state != InputState.Release);
+            SetKey(Singleton.frame.next, (MouseButton)button, state != InputState.Release);
         }
-
-        public static bool IsDown(MouseButton key) => Singleton.IsKeyDown(key);
-        public static bool IsUp(MouseButton key) => Singleton.IsKeyUp(key);
-        public static bool IsPressed(MouseButton key) => Singleton.IsKeyPressed(key);
-        public static bool IsReleased(MouseButton key) => Singleton.IsKeyReleased(key);
 
         internal override void Update()
         {
             base.Update();
             Glfw.GetCursorPosition(Engine.handle, out x, out y);
-            Singleton = this;
         }
+
+        public static void SetPosition(float x, float y) =>
+            Glfw.SetCursorPosition(Engine.handle, x, y);
+
+        public static void SetPosition(Vector2 p) => SetPosition(p.x, p.y);
     }
-    //
-    // public static class Input
-    // {
-    //     private struct Button<T> where T : unmanaged, Enum
-    //     {
-    //         public T code;
-    //         public InputBase<T> input;
-    //     }
-    //
-    //     private static Dictionary<string, List<Button<object>>> actions = new();
-    //
-    //     public static void AddAction(string name, Key key)
-    //     {
-    //         if (actions.ContainsKey(name)) actions[name]
-    //         actions.Add(name, key);
-    //     }
-    //
-    //     public static bool IsDown(string name)
-    //     {
-    //         return false;
-    //     }
-    // }
 }

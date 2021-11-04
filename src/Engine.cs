@@ -202,8 +202,7 @@ namespace Crimson
             Gl.Enable(EnableCap.Blend);
             Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-            Keyboard.Init();
-            Mouse.Init();
+            Input.Init();
             AudioPlayer.Init();
             Graphics.Init();
             Scene.InitTweens();
@@ -236,39 +235,30 @@ namespace Crimson
             FrameTime = GetFrameTime();
             accumulator += FrameTime;
 
-            // All of the f and u prefixes are because we want some stuff to work both for Update() and for Frame().
-            // Input has to be updated exactly once before a call to either function,
-            // or else keypresses will stick or not register at all. (noticeable ony when calling IsPressed)
-            // Update() could get called any number of times per frame, including zero,
-            // meaning you wouldn't see anything you draw there, but only sometimes.
-            // If you can come up with a better solution, I beg of you to do so.
-            Keyboard.FSingleton.Update();
-            Mouse.FSingleton.Update();
-
             Graphics.Queue = Graphics.fQueue;
 
             Delta = FrameTime;
             Elapsed += Delta;
 
+            Input.SetFrame();
+            Input.Update();
             Scene.Frame(FrameTime);
 
             Delta = PhysicsStep;
 
             Graphics.Queue = Graphics.uQueue;
+            Input.SetUpdate();
             Updated = false;
-
             while (accumulator >= PhysicsStep)
             {
                 Updated = true;
-                Keyboard.USingleton.Update();
-                Mouse.USingleton.Update();
-
+                Input.Update();
                 Scene.Update(PhysicsStep);
-
                 accumulator -= PhysicsStep;
             }
 
             Graphics.Queue = Graphics.fQueue;
+            Input.SetFrame();
 
             Glfw.PollEvents();
         }
