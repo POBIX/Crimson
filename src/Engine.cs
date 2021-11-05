@@ -1,5 +1,7 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using GLFW;
 using OpenGL;
 
@@ -168,6 +170,24 @@ namespace Crimson
         /// </summary>
         public static bool Updated { get; private set; }
 
+        /// <inheritdoc cref="Light.Ambience"/>
+        public static float AmbientLight
+        {
+            get => Light.Ambience;
+            set => Light.Ambience = value;
+        }
+
+        private static string title;
+        public static string Title
+        {
+            get => title;
+            set
+            {
+                title = value;
+                Glfw.SetWindowTitle(handle, Title);
+            }
+        }
+
         /// <summary>
         /// Creates a window and initializes Engine. Can only be called once.
         /// </summary>
@@ -179,6 +199,7 @@ namespace Crimson
             // not using the properties on purpose, as they'll resize the window, which doesn't even exist yet.
             Engine.width = width;
             Engine.height = height;
+            Engine.title = title;
 
             Glfw.Init();
 
@@ -287,6 +308,13 @@ namespace Crimson
             Graphics.RenderToScreen();
             Drawing = false;
             Glfw.SwapBuffers(handle);
+        }
+
+        public static void LoadSettingsSource(string source)
+        {
+            Parser.Section[] sections = Parser.ParseINI(source).ToArray();
+            Parser.ParseSettings(sections.Find("Settings"));
+            Parser.ParseInput(sections.Find("Input"));
         }
 
         /// <summary>

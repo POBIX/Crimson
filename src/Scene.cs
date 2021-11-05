@@ -153,6 +153,8 @@ namespace Crimson
             scene.Remove(o);
         }
 
+        public void Reset() => scene.Clear();
+
         /// <summary>
         /// Finds an entity by name. Returns null if not found.
         /// </summary>
@@ -167,6 +169,12 @@ namespace Crimson
                 }
             }
             return null;
+        }
+
+        public void Load<T>() where T : SceneGenerator, new()
+        {
+            T t = new() { Scene = this };
+            t.Start();
         }
     }
 }
