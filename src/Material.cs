@@ -17,7 +17,7 @@ namespace Crimson
         TessEvaluation = GLType.TessEvaluationShader,
     }
 
-    public class Material : ShaderBase, ICustomParser, IDisposable
+    public class Material : ShaderBase, IDisposable
     {
         internal uint vao;
         internal uint vbo;
@@ -143,16 +143,6 @@ namespace Crimson
 
         public static void VertexAttribPointer(uint location, IntPtr ptr, int stride) =>
             Gl.VertexAttribPointer(location, 2, VertexAttribType.Float, false, stride * sizeof(float), ptr);
-
-        bool ICustomParser.Parse(string lhs, string rhs)
-        {
-            if (Enum.TryParse(lhs, out ShaderType type) && Helper.TryParseString(rhs, out string path))
-            {
-                AttachShader(type, path);
-                return true;
-            }
-            return false;
-        }
 
         /// <summary>
         /// Attaches <paramref name="fragPath"/> and <paramref name="vertPath"/> only if there is no shader already attached.

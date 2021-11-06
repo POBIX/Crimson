@@ -8,7 +8,7 @@ using GLType = OpenGL.ShaderType;
 
 namespace Crimson
 {
-    public class ComputeShader : ShaderBase, IDisposable, ICustomParser
+    public class ComputeShader : ShaderBase, IDisposable
     {
         public ComputeShader() => program = Gl.CreateProgram();
 
@@ -39,13 +39,6 @@ namespace Crimson
         {
             tex.BindImage(access, unit);
             SetUniform(name, unit);
-        }
-
-        public bool Parse(string lhs, string rhs)
-        {
-            if (lhs != "Source") return false;
-            Attach(rhs.Trim('"'));
-            return true;
         }
 
         protected override void Dispose(bool disposing)

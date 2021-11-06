@@ -24,11 +24,15 @@ namespace Crimson
         public Vector2 Size { get; set; }
         public Vector2 Gravity { get; set; }
         public float TimeElapsed { get; private set; }
+        public ParticleEmitter Parent { get; internal set; }
 
-        internal Vector2 position;
+        public Vector2 Position { get; set; }
 
         private Vector2 vel;
         private Vector2 velocity;
+
+        private static Random rnd = new();
+        private Vector2 RandomPos() => new(rnd.Next(0, (int)Parent.Size.x), rnd.Next(0, (int)Parent.Size.y));
 
         public Particle(Vector2 velocity, Color color, float lifetime, Vector2 size, Vector2 gravity)
         {
@@ -39,31 +43,34 @@ namespace Crimson
             Gravity = gravity;
         }
 
-        public Particle(Vector2 velocity, Color color, float lifetime, Vector2 size) :
-            this(velocity, color, lifetime, size, new(0, 9.8f)) { }
+        internal void Start() => Position = RandomPos();
 
         internal void Update(float delta)
         {
             vel += Gravity;
-            position += vel * delta;
+            Position += vel * delta;
             if ((TimeElapsed += delta) > Lifetime)
             {
-                position = new();
-                vel = new();
+                Position = RandomPos();
+                vel = Vector2.Zero;
                 TimeElapsed = 0;
             }
         }
     }
 
-    public class ParticleEmitter : IDrawableObject
+    public class ParticleEmitter : DrawableObject
     {
         private const int MaxParticles = 256; // due to size limitations on uniform array
 
         private List<Particle> particles = new(MaxParticles);
-        private static Material material;
-        Material IDrawableObject.Material => material;
+        private static Material defMat;
+        private Material material = null;
+        public override Material Material
+        {
+            get => material ?? defMat;
+            set => material = value;
+        }
 
-        public Vector2 Position { get; set; }
         public Vector2 Size { get; set; }
 
         public bool Paused { get; set; }
@@ -87,15 +94,15 @@ namespace Crimson
 
         static ParticleEmitter()
         {
-            material = new();
-            material.AttachShaderText(ShaderType.Fragment, Resources.Read("shaders/particle.frag"));
-            material.AttachShaderText(ShaderType.Vertex, Resources.Read("shaders/basic.vert"));
-            material.Link();
+            defMat = new();
+            defMat.AttachShaderText(ShaderType.Fragment, Resources.Read("shaders/particle.frag"));
+            defMat.AttachShaderText(ShaderType.Vertex, Resources.Read("shaders/basic.vert"));
+            defMat.Link();
 
-            material.FeedBuffer(Vertices);
-            material.BindVAO();
-            material.EnableVertexAttribArray("VERTEX");
-            material.VertexAttribPointer("VERTEX", IntPtr.Zero, 2);
+            defMat.FeedBuffer(Vertices);
+            defMat.BindVAO();
+            defMat.EnableVertexAttribArray("VERTEX");
+            defMat.VertexAttribPointer("VERTEX", IntPtr.Zero, 2);
 
             for (int i = 0; i < MaxParticles; i++)
             {
@@ -105,30 +112,31 @@ namespace Crimson
             }
         }
 
-        void ISceneObject.Update(float delta)
+        public override void Update(float delta)
         {
             if (Stopped || Paused) return;
             foreach (var p in particles)
                 p.Update(delta);
+            Material.UpdateUniforms();
         }
 
-        public void Start() { }
-        public void Frame(float delta) { }
-        public void SetScene(Scene value) { }
+        public override void Start() { }
+        public override void Frame(float delta) { }
+        public override void SetScene(Scene value) { }
 
-        void IDrawableObject.Draw()
+        public override void Draw()
         {
             if (Stopped) return;
 
-            material.SetUniform("TRANSFORM", Camera.GetTransform(Position, 0, Size), false);
+            Material.SetUniform("TRANSFORM", Camera.GetTransform(Position, 0, Size), false);
 
-            material.SetUniform("PARTICLES", particles.Count);
+            Material.SetUniform("PARTICLES", particles.Count);
             Vector2 basePos = Position - Camera.CurrentOrigin;
             for (int i = 0; i < particles.Count; i++)
             {
-                material.SetUniform(posCache[i], basePos + particles[i].position);
-                material.SetUniform(colorCache[i], particles[i].Color);
-                material.SetUniform(sizeCache[i], particles[i].Size);
+                Material.SetUniform(posCache[i], basePos + particles[i].Position);
+                Material.SetUniform(colorCache[i], particles[i].Color);
+                Material.SetUniform(sizeCache[i], particles[i].Size);
             }
 
             Graphics.DrawArrays(PrimitiveType.Triangles, 0, 6);
@@ -139,6 +147,8 @@ namespace Crimson
             if (particles.Count >= MaxParticles)
                 throw new InsufficientMemoryException("A particle emitter can only have up to 256 particles.");
             particles.Add(p);
+            p.Parent = this;
+            p.Start();
         }
     }
 }

@@ -164,15 +164,14 @@ namespace Crimson
         }
     }
 
-    public class Label : IDrawableObject, IDisposable
+    public class Label : DrawableObject, IDisposable
     {
-        public Material Material { get; set; } = new();
+        public override Material Material { get; set; } = new();
         public Scene Scene { get; private set; }
 
         public Font Font { get; set; }
         public string Text { get; set; }
 
-        public Vector2 Position { get; set; }
         public float Rotation { get; set; }
         public Color Color { get; set; } = Color.White;
         public Vector2 Scale { get; set; } = Vector2.One;
@@ -198,7 +197,7 @@ namespace Crimson
             1, -1, 1, 0
         };
 
-        void ISceneObject.Start()
+        public override void Start()
         {
             Material ??= new();
             Material.InitShaderText(Resources.Read("shaders/text.vert"), Resources.Read("shaders/text.frag"));
@@ -286,7 +285,7 @@ namespace Crimson
             yield return line;
         }
 
-        void IDrawableObject.Draw()
+        public override void Draw()
         {
             Matrix gMat = Camera.GetTransform(Position, Rotation, Vector2.One);
 
@@ -330,9 +329,9 @@ namespace Crimson
             }
         }
 
-        void ISceneObject.Update(float delta) { }
-        void ISceneObject.Frame(float delta) { }
-        void ISceneObject.SetScene(Scene value) => Scene = value;
+        public override void Update(float delta) { }
+        public override void Frame(float delta) { }
+        public override void SetScene(Scene value) => Scene = value;
 
         public Rect GetBoundingBox()
         {

@@ -13,11 +13,11 @@ namespace Crimson
         {
             base.Start();
             colliders = GetComponents<ICollide>().ToList();
-            Parent.ComponentAdded += c =>
+            Entity.ComponentAdded += c =>
             {
                 if (c is ICollide l) colliders.Add(l);
             };
-            Parent.ComponentRemoved += c =>
+            Entity.ComponentRemoved += c =>
             {
                 if (c is ICollide l) colliders.Remove(l);
             };
@@ -54,11 +54,11 @@ namespace Crimson
         {
             base.Start();
             colliders = GetComponents<ICollide>().ToList();
-            Parent.ComponentAdded += c =>
+            Entity.ComponentAdded += c =>
             {
                 if (c is ICollide l) colliders.Add(l);
             };
-            Parent.ComponentRemoved += c =>
+            Entity.ComponentRemoved += c =>
             {
                 if (c is ICollide l) colliders.Remove(l);
             };
@@ -75,7 +75,7 @@ namespace Crimson
                 foreach (ICollide c in sceneColliders)
                 {
                     if (c == collider) continue;
-                    Entity e = ((Component)c).Parent;
+                    Entity e = ((Component)c).Entity;
                     bool colliding = collider.IsCollidingAny(collider, c, Vector2.Zero, out _);
                     bool contains = collisions.Contains(e);
                     if (colliding && !contains)
@@ -152,7 +152,7 @@ namespace Crimson
 
         public bool IsColliding(BoxCollider source, BoxCollider target, Vector2 velocity, out BoxCollisionInfo info)
         {
-            info = new() { Target = target, Entity = target.Parent };
+            info = new() { Target = target, Entity = target.Entity };
             Rect a = source.Bounds;
             Rect b = new(target.Position - target.Size / 2 - a.Size / 2, target.Size + a.Size);
             Vector2 origin = a.Position;

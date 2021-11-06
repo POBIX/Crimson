@@ -5,11 +5,8 @@ using OpenGL;
 
 namespace Crimson
 {
-    public class Light : ISceneObject
+    public class Light : SceneObject
     {
-        /// <summary> The light's position. </summary>
-        public Vector2 Position { get; set; }
-
         /// <summary> The light's radius. </summary>
         public float Radius { get; set; }
 
@@ -19,21 +16,27 @@ namespace Crimson
         /// <summary> The color of the light's emission. </summary>
         public Color Color { get; set; } = Color.White;
 
+        public Scene Scene { get; private set; }
+
         /// <summary>
         /// The amount of ambient light in the scene.
         /// 1 is completely bright (lights won't work) and 0 is completely dark (you won't see anything without lights).
         /// </summary>
         public static float Ambience { get; set; } = 1;
 
-        void ISceneObject.Start() { }
-        void ISceneObject.Update(float delta) { }
-        void ISceneObject.Frame(float delta) { }
-        void ISceneObject.SetScene(Scene value) { }
+        public override void Start() { }
+        public override void Update(float delta) { }
+        public override void Frame(float delta) { }
+        public override void SetScene(Scene value)
+        {
+            Scene = value;
+            Scene.lights.Add(this);
+        }
     }
 
     public sealed partial class Scene
     {
-        private List<Light> lights = new();
+        internal List<Light> lights = new();
 
         internal void DrawLights(Material mat)
         {
@@ -49,11 +52,16 @@ namespace Crimson
 
         public Light CreateLight(Vector2 position, float radius, float strength, Color color)
         {
-            Light l = new() {Position = position, Radius = radius, Strength = strength, Color = color};
-            AddLight(l);
+            Light l = new() { Position = position, Radius = radius, Strength = strength, Color = color };
+            AddObject(l);
             return l;
         }
 
-        public void AddLight(Light l) => lights.Add(l);
+        public Light CreateLight(SceneObject parent, float radius, float strength, Color color, Vector2 offset = new())
+        {
+            Light l = new() { Parent = parent, LocalPosition = offset, Radius = radius, Strength = strength, Color = color };
+            AddObject(l);
+            return l;
+        }
     }
 }

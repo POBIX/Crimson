@@ -5,28 +5,36 @@ using Crimson.Scenes;
 
 namespace Crimson
 {
-    public interface ISceneObject
+    public abstract class SceneObject
     {
-        void Start();
-        void Update(float delta);
-        void Frame(float delta);
+        public abstract void Start();
+        public abstract void Update(float delta);
+        public abstract void Frame(float delta);
 
-        void SetScene(Scene value);
+        public abstract void SetScene(Scene value);
+
+        public SceneObject Parent { get; set; }
+        public virtual Vector2 LocalPosition { get; set; }
+        public virtual Vector2 Position
+        {
+            get => LocalPosition + (Parent?.Position ?? Vector2.Zero);
+            set => LocalPosition = value - (Parent?.Position ?? Vector2.Zero);
+        }
     }
 
-    public interface IDrawableObject : ISceneObject
+    public abstract class DrawableObject : SceneObject
     {
-        Material Material { get; }
-        void Draw();
+        public abstract Material Material { get; set; }
+        public abstract void Draw();
     }
 
     public sealed partial class Scene
     {
-        private List<ISceneObject> scene = new();
+        private List<SceneObject> scene = new();
 
         public bool Started { get; private set; } = false;
 
-        public void AddObject(ISceneObject o)
+        public void AddObject(SceneObject o)
         {
             o.SetScene(this);
             scene.Add(o);
@@ -34,7 +42,7 @@ namespace Crimson
         }
 
         /// <summary>
-        /// Calls the <seealso cref="ISceneObject.Start"/> method on every object added to the scene.
+        /// Calls the <seealso cref="SceneObject.Start"/> method on every object added to the scene.
         /// </summary>
         public void Start()
         {
@@ -46,7 +54,7 @@ namespace Crimson
         }
 
         /// <summary>
-        /// Calls the <seealso cref="ISceneObject.Update"/> method on every object added to the scene.
+        /// Calls the <seealso cref="SceneObject.Update"/> method on every object added to the scene.
         /// </summary>
         public void Update(float delta)
         {
@@ -56,7 +64,7 @@ namespace Crimson
         }
 
         /// <summary>
-        /// Calls the <seealso cref="ISceneObject.Frame"/> method on every object added to the scene.
+        /// Calls the <seealso cref="SceneObject.Frame"/> method on every object added to the scene.
         /// </summary>
         public void Frame(float delta)
         {
@@ -66,26 +74,20 @@ namespace Crimson
         }
 
         /// <summary>
-        /// Calls the <seealso cref="ISceneObject.Draw"/> method on every object added to the scene.
+        /// Calls the <seealso cref="SceneObject.Draw"/> method on every object added to the scene.
         /// </summary>
         public void Draw()
         {
             // ReSharper disable once ForCanBeConvertedToForeach (collection might be modified)
             for (int i = 0; i < scene.Count; i++)
             {
-                if (scene[i] is IDrawableObject d)
+                if (scene[i] is DrawableObject d)
                 {
                     d.Material.Use();
                     d.Draw();
                 }
             }
         }
-
-        /// <summary>
-        /// Adds a timer to the scene - it won't work without being attached to it.
-        /// </summary>
-        /// <param name="t">The timer to add</param>
-        public void AddTimer(Timer t) => AddObject(t);
 
         /// <summary>
         /// Creates a timer and adds it to the scene.
@@ -100,7 +102,7 @@ namespace Crimson
         {
             var t = new Timer(duration, loop, syncToPhysics);
             t.Timeout += timeout;
-            AddTimer(t);
+            AddObject(t);
             if (autoStart) t.Begin();
             return t;
         }
@@ -110,7 +112,7 @@ namespace Crimson
         /// </summary>
         public IEnumerable<T> GetComponentsOfType<T>() where T : class
         {
-            foreach (ISceneObject o in scene)
+            foreach (SceneObject o in scene)
             {
                 if (o is Entity e)
                 {
@@ -121,22 +123,11 @@ namespace Crimson
         }
 
         /// <summary>
-        /// Loads a scene file.
-        /// </summary>
-        /// <param name="scene">The path of the scene file to load. </param>
-        public void Load(string scene)
-        {
-            foreach (ISceneObject o in SceneReader.LoadScene(File.ReadAllText(scene)))
-                AddObject(o);
-            Start();
-        }
-
-        /// <summary>
         /// Destroys an object - stops updating and drawing it.
         /// Automatically disposes IDisposables.
         /// </summary>
         /// <param name="o">The entity to destroy</param>
-        public void Destroy(ISceneObject o)
+        public void Destroy(SceneObject o)
         {
             DestroyNoDispose(o);
             if (o is IDisposable d) d.Dispose();
@@ -147,7 +138,7 @@ namespace Crimson
         /// Does not dispose IDisposables.
         /// </summary>
         /// <param name="o">The entity to destroy</param>
-        public void DestroyNoDispose(ISceneObject o)
+        public void DestroyNoDispose(SceneObject o)
         {
             o.SetScene(null);
             scene.Remove(o);
@@ -160,7 +151,7 @@ namespace Crimson
         /// </summary>
         public Entity FindEntity(string name)
         {
-            foreach (ISceneObject o in scene)
+            foreach (SceneObject o in scene)
             {
                 if (o is Entity e)
                 {

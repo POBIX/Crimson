@@ -5,7 +5,7 @@ namespace Crimson
 {
     using static MathF;
 
-    public class Tweener<T> : ISceneObject
+    public class Tweener<T> : SceneObject
     {
         public T Initial { get; private set; }
         public T Target { get; set; }
@@ -17,7 +17,7 @@ namespace Crimson
         public float Elapsed { get; private set; }
 
         public Scene Scene { get; private set; }
-        public void SetScene(Scene value) => Scene = value;
+        public override void SetScene(Scene value) => Scene = value;
 
         private Func<T, T, float, T> calc;
         private static Dictionary<Type, Func<T, T, float, T>> calculators = new();
@@ -36,11 +36,9 @@ namespace Crimson
             set = setter;
         }
 
-        public void Start() { }
-
-        public void Update(float delta) { }
-
-        public void Frame(float delta)
+        public override void Start() { }
+        public override void Update(float delta) { }
+        public override void Frame(float delta)
         {
             Elapsed += delta;
             if (Elapsed >= Duration)

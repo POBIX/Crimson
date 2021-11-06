@@ -5,22 +5,22 @@ namespace Crimson
     public class Component
     {
         /// <summary> The entity the component is attached to. </summary>
-        public Entity Parent { get; internal set; }
+        public Entity Entity { get; internal set; }
 
-        /// <inheritdoc cref="Entity.Material"/>
-        public Material Material => Parent.Material;
+        /// <inheritdoc cref="Crimson.Entity.Material"/>
+        public Material Material => Entity.Material;
 
-        /// <inheritdoc cref="Entity.Scene"/>
-        public Scene Scene => Parent.Scene;
+        /// <inheritdoc cref="Crimson.Entity.Scene"/>
+        public Scene Scene => Entity.Scene;
 
-        /// <inheritdoc cref="Entity.Position"/>
+        /// <inheritdoc cref="Crimson.Entity.Position"/>
         public virtual Vector2 Position
         {
-            get => Parent.Position;
-            set => Parent.Position = value;
+            get => Entity.Position;
+            set => Entity.Position = value;
         }
 
-        public bool IsValid => Parent != null && Parent.IsValid;
+        public bool IsValid => Entity != null && Entity.IsValid;
 
         /// <summary>
         /// Gets called as soon as the entity is added to the scene, and before <see cref="Start"/>
@@ -45,19 +45,19 @@ namespace Crimson
         /// </summary>
         public virtual void Draw() { }
 
-        /// <inheritdoc cref="Entity.GetComponent"/>
-        public T GetComponent<T>() where T : class => Parent.GetComponent<T>();
-        /// <inheritdoc cref="Entity.GetComponents"/>
-        public IEnumerable<T> GetComponents<T>() where T : class => Parent.GetComponents<T>();
-        /// <inheritdoc cref="Entity.AddComponent"/>
-        public T AddComponent<T>() where T : Component, new() => Parent.AddComponent<T>();
-        /// <inheritdoc cref="Entity.RemoveComponent"/>
-        public void RemoveComponent<T>() where T : class => Parent.RemoveComponent<T>();
-        /// <inheritdoc cref="Entity.RemoveComponents"/>
-        public void RemoveComponents<T>() where T : class => Parent.RemoveComponents<T>();
-        /// <inheritdoc cref="Entity.RemoveComponent"/>
-        public void RemoveComponent(Component c) => Parent.RemoveComponent(c);
-        /// <inheritdoc cref="Entity.HasComponent"/>
-        public bool HasComponent<T>(out T component) where T : class => Parent.HasComponent(out component);
+        /// <inheritdoc cref="Crimson.Entity.GetComponent"/>
+        public T GetComponent<T>() where T : class => Entity.GetComponent<T>();
+        /// <inheritdoc cref="Crimson.Entity.GetComponents"/>
+        public IEnumerable<T> GetComponents<T>() where T : class => Entity.GetComponents<T>();
+        /// <inheritdoc cref="Crimson.Entity.AddComponent"/>
+        public T AddComponent<T>() where T : Component, new() => Entity.AddComponent<T>();
+        /// <inheritdoc cref="Crimson.Entity.RemoveComponent"/>
+        public void RemoveComponent<T>() where T : class => Entity.RemoveComponent<T>();
+        /// <inheritdoc cref="Crimson.Entity.RemoveComponents"/>
+        public void RemoveComponents<T>() where T : class => Entity.RemoveComponents<T>();
+        /// <inheritdoc cref="Crimson.Entity.RemoveComponent"/>
+        public void RemoveComponent(Component c) => Entity.RemoveComponent(c);
+        /// <inheritdoc cref="Crimson.Entity.HasComponent"/>
+        public bool HasComponent<T>(out T component) where T : class => Entity.HasComponent(out component);
     }
 }

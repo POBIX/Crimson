@@ -139,12 +139,6 @@ namespace Crimson
         public static Scene Scene { get; set; }
 
         /// <summary>
-        /// Loads a scene file into the currently active scene.
-        /// </summary>
-        /// <param name="path">The scene file's path.</param>
-        public static void LoadScene(string path) => Scene.Load(path);
-
-        /// <summary>
         /// The seconds elapsed since the last frame or the constant physics step -
         /// depends on which method (Frame() or Update()) was called last.
         /// </summary>

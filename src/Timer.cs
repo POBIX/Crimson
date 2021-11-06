@@ -2,7 +2,7 @@
 
 namespace Crimson
 {
-    public class Timer : ISceneObject
+    public class Timer : SceneObject
     {
         public event Action Timeout;
 
@@ -56,17 +56,17 @@ namespace Crimson
             }
         }
 
-        void ISceneObject.Update(float delta)
+        public override void Update(float delta)
         {
             if (SyncToPhysics) Progress(delta);
         }
 
-        void ISceneObject.Frame(float delta)
+        public override void Frame(float delta)
         {
             if (!SyncToPhysics) Progress(delta);
         }
 
-        void ISceneObject.SetScene(Scene value) => Scene = value;
-        void ISceneObject.Start() { }
+        public override void SetScene(Scene value) => Scene = value;
+        public override void Start() { }
     }
 }

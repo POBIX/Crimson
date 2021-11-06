@@ -10,7 +10,7 @@ namespace Crimson
         Center
     }
 
-    public class Camera : Component, ICustomParser
+    public class Camera : Component
     {
         private Vector2 target;
         private Offset offset;
@@ -57,14 +57,9 @@ namespace Crimson
 
         internal Vector2 scale = Vector2.One;
 
-        public override void Start()
-        {
-            Engine.Resize += (w, h) =>
-            {
-                Ortho = Matrix.Ortho(0, w, h, 0, -1, 1);
-                CalcSize();
-            };
-        }
+        static Camera() => Engine.Resize += (w, h) => Ortho = Matrix.Ortho(0, w, h, 0, -1, 1);
+
+        public override void Start() => Engine.Resize += (_, _) => CalcSize();
 
         private void Lerp()
         {
@@ -120,22 +115,11 @@ namespace Crimson
             scale = Engine.Size / VirtualResolution;
         }
 
-        private void CalcOffset() =>
-            actualOffset = offset switch
-            {
-                Offset.Center => VirtualResolution / 2,
-                Offset.TopLeft => new(),
-                _ => new()
-            };
-
-        bool ICustomParser.Parse(string lhs, string rhs)
+        private void CalcOffset() => actualOffset = offset switch
         {
-            if (lhs == "Active" && bool.TryParse(rhs, out bool b))
-            {
-                if (b) Activate();
-                return true;
-            }
-            return false;
-        }
+            Offset.Center => VirtualResolution / 2,
+            Offset.TopLeft => new(),
+            _ => new()
+        };
     }
 }

@@ -48,7 +48,7 @@ namespace Crimson
     //         hit = new();
     //         foreach (ICollidable c in Engine.Scene.GetComponentsOfType<ICollidable>())
     //         {
-    //             if (ignore.Contains(c.Collider.Parent) || (c.Layer & layer) == 0) continue;
+    //             if (ignore.Contains(c.Collider.Entity) || (c.Layer & layer) == 0) continue;
     //
     //             Collider t = c.Collider;
     //             Rect e = new Rect(t.Position - t.Size / 2, t.Size);
@@ -56,7 +56,7 @@ namespace Crimson
     //             if (GetBroadphase(origin, e, vel) &&
     //                 IntersectsTarget(origin, vel, e, out hit.normal, out hit.rayTime))
     //             {
-    //                 hit.collider = t.Parent;
+    //                 hit.collider = t.Entity;
     //                 hit.point = origin + vel * hit.rayTime;
     //                 return true;
     //             }

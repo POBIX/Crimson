@@ -3,18 +3,15 @@ using System.Collections.Generic;
 
 namespace Crimson
 {
-    public sealed class Entity : IDrawableObject, IDisposable
+    public sealed class Entity : DrawableObject, IDisposable
     {
         private List<Component> components = new();
 
         /// <summary> The entity's current scene. </summary>
         public Scene Scene { get; private set; }
 
-        /// <summary> The entity's position. </summary>
-        public Vector2 Position { get; set; }
-
         /// <summary> The entity's material. </summary>
-        public Material Material { get; set; }
+        public override Material Material { get; set; }
 
         /// <summary> The entity's name. </summary>
         public string Name { get; set; }
@@ -73,7 +70,7 @@ namespace Crimson
         /// <param name="c">The component to add</param>
         public void AddComponent(Component c)
         {
-            c.Parent = this;
+            c.Entity = this;
             if (Awoke) c.Awake();
             if (Started) c.Start();
             components.Add(c);
@@ -159,7 +156,7 @@ namespace Crimson
                 components[i].Awake();
         }
 
-        void ISceneObject.Start()
+        public override void Start()
         {
             Started = true;
             // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
@@ -167,27 +164,27 @@ namespace Crimson
                 components[i].Start();
         }
 
-        void ISceneObject.Update(float delta)
+        public override void Update(float delta)
         {
             // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
             for (int i = 0; i < components.Count; i++)
                 components[i].Update(delta);
         }
 
-        void ISceneObject.Frame(float delta)
+        public override void Frame(float delta)
         {
             // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
             for (int i = 0; i < components.Count; i++)
                 components[i].Frame(delta);
         }
 
-        void ISceneObject.SetScene(Scene value)
+        public override void SetScene(Scene value)
         {
             Scene = value;
             Awake();
         }
 
-        void IDrawableObject.Draw()
+        public override void Draw()
         {
             // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
             for (int i = 0; i < components.Count; i++)
