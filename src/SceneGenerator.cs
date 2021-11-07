@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Reflection;
 
-namespace Crimson.Scenes
+namespace Crimson
 {
     public abstract class SceneGenerator
     {

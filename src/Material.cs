@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Crimson.Scenes;
 using OpenGL;
 using GLType = OpenGL.ShaderType;
 

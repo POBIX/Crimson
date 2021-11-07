@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using GLFW;
@@ -188,7 +189,7 @@ namespace Crimson
         /// <param name="width">The window's width</param>
         /// <param name="height">The window's height</param>
         /// <param name="title">The window's title</param>
-        public static void Create(int width, int height, string title)
+        public static void Create(int width, int height, string title, bool fullscreen = false)
         {
             // not using the properties on purpose, as they'll resize the window, which doesn't even exist yet.
             Engine.width = width;
@@ -201,7 +202,9 @@ namespace Crimson
             Glfw.WindowHint(Hint.ContextVersionMinor, 6);
             Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
 
-            handle = Glfw.CreateWindow(width, height, "Loading...", Monitor.None, Window.None);
+            handle = Glfw.CreateWindow(
+                width, height, "Loading...", fullscreen ? Glfw.PrimaryMonitor : Monitor.None, Window.None
+            );
             Glfw.SwapBuffers(handle); // prevent screen from being white during initialization (black instead; eyes happy)
 
             Gl.Initialize();
@@ -229,6 +232,42 @@ namespace Crimson
             Running = true;
 
             Glfw.SetWindowTitle(handle, title);
+        }
+
+        public static void Create(string settingsPath)
+        {
+            Parser.Section[] sections = Parser.ParseINI(File.ReadAllText(settingsPath)).ToArray();
+            Vector2 winSize = new(1280, 720);
+            string winTitle = "My Game";
+            bool winFull = false;
+
+            bool sizeChanged = false;
+            foreach (var (key, value) in sections.Find("Window"))
+            {
+                switch (key)
+                {
+                    case "Size":
+                        winSize = (Vector2)value;
+                        sizeChanged = true;
+                        break;
+                    case "Title":
+                        winTitle = (string)value;
+                        break;
+                    case "Fullscreen":
+                        winFull = (bool)value;
+                        break;
+                    default:
+                        throw new FormatException($"Unexpected key {key} in [Window] section of settings file.");
+                }
+            }
+            // if we set fullscreen without specifying a size, then it should be equal to the monitor's resolution.
+            if (winFull && !sizeChanged)
+            {
+                VideoMode mode = Glfw.GetVideoMode(Glfw.PrimaryMonitor);
+                winSize = new(mode.Width, mode.Height);
+            }
+            Create((int)winSize.x, (int)winSize.y, winTitle, winFull);
+            LoadSettings(sections);
         }
 
         private static float GetFrameTime()
@@ -304,12 +343,19 @@ namespace Crimson
             Glfw.SwapBuffers(handle);
         }
 
-        public static void LoadSettingsSource(string source)
+        public static void LoadSettingsSource(string source) =>
+            LoadSettings(Parser.ParseINI(source).ToArray());
+
+        public static void LoadSettings(string filePath) =>
+            LoadSettingsSource(File.ReadAllText(filePath));
+
+        private static void LoadSettings(Parser.Section[] sections)
         {
-            Parser.Section[] sections = Parser.ParseINI(source).ToArray();
             Parser.ParseSettings(sections.Find("Settings"));
             Parser.ParseInput(sections.Find("Input"));
         }
+
+        public static void LoadScene<T>() where T : SceneGenerator, new() => Scene.Load<T>();
 
         /// <summary>
         /// Sets <see cref="Running"/> to false, closes the window, and frees resources.

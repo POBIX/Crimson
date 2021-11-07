@@ -1,5 +1,4 @@
 ﻿using System;
-using Crimson.Scenes;
 using OpenGL;
 
 namespace Crimson

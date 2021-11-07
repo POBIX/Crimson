@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Crimson.Scenes;
 using OpenGL;
 
 namespace Crimson

@@ -16,7 +16,8 @@ namespace Crimson
             public string Name { get; set; }
             public Dictionary<string, object> Fields { get; set; }
 
-            public IEnumerator<KeyValuePair<string, object>> GetEnumerator() => Fields.GetEnumerator();
+            public IEnumerator<KeyValuePair<string, object>> GetEnumerator() =>
+                Fields?.GetEnumerator() ?? Enumerable.Empty<KeyValuePair<string, object>>().GetEnumerator();
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
             public Section(string name = "")
