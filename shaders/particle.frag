@@ -2,13 +2,16 @@
 
 struct Particle
 {
-    vec2 position;
     vec4 color;
+    vec2 position;
     vec2 size;
     // the c# class has a few more fields. we use them to calculate the position on the CPU.
 };
-
-uniform Particle particles[256];
+layout (std430) buffer particlesSSBO
+{
+    Particle particles[];
+};
+//uniform Particle particles[256];
 uniform int PARTICLES;
 uniform vec2 SCREEN_SIZE;
 

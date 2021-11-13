@@ -1,16 +1,15 @@
-﻿namespace Crimson
+﻿namespace Crimson;
+
+internal static class Helper
 {
-    internal static class Helper
+    public static bool TryParseString(string source, out string result)
     {
-        public static bool TryParseString(string source, out string result)
+        if (source[0] != '"' || source[^1] != '"')
         {
-            if (source[0] != '"' || source[^1] != '"')
-            {
-                result = null;
-                return false;
-            }
-            result = source.Trim('"');
-            return true;
+            result = null;
+            return false;
         }
+        result = source.Trim('"');
+        return true;
     }
 }

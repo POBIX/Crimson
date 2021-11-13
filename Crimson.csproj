@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <PlatformTarget>x86</PlatformTarget>
 
         <!--OpenGL.Net was compiled using .NET Framework 4.8 but we use .NET 5.
             Everything appears to work just fine anyway, so I shall promptly ignore that.-->
         <NoWarn>NU1701</NoWarn>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <OutputType>Exe</OutputType>
+        <LangVersion>10</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
