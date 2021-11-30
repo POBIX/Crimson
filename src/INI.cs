@@ -1,9 +1,10 @@
 ﻿using System.Collections;
 using System.Reflection;
+using Crimson;
 
 namespace Crimson;
 
-public static class Parser
+public static class INI
 {
     private const StringSplitOptions SplitOptions =
         StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries;
@@ -56,7 +57,7 @@ public static class Parser
             yield return ParseString(el);
     }
 
-    public static IEnumerable<Section> ParseINI(string source)
+    public static IEnumerable<Section> Parse(string source)
     {
         Section current = new();
         foreach (string line in source.Split('\n', SplitOptions))
@@ -99,13 +100,36 @@ public static class Parser
             Key[] keys = new Key[arr.Length];
             for (int i = 0; i < arr.Length; i++)
                 keys[i] = Enum.Parse<Key>(arr[i]);
-            Input.AddAction(key, keys);
+            Input.AddAction(key, new KeyboardAction(keys));
         }
+    }
+
+    public static void ParseAction(Section action)
+    {
+        foreach (InputBase i in Input.Handlers)
+        {
+            if (!action.Fields.TryGetValue(i.GetType().Name, out object val)) continue;
+
+            string[] keys = ((object[])val).Cast<string>().ToArray();
+            Type t = typeof(Action<>).MakeGenericType(i.Type);
+            IInputAction a = (IInputAction)Activator.CreateInstance(t);
+            foreach (string s in keys)
+                a!.Add(Enum.Parse(i.Type, s));
+        }
+    }
+
+    public static void ParseInput(IEnumerable<Section> subsections)
+    {
+        foreach (Section s in subsections)
+            ParseAction(s);
     }
 }
 
 internal static class EnumerableSectionExtensions
 {
-    public static Parser.Section Find(this IEnumerable<Parser.Section> s, string name) =>
+    public static INI.Section? Find(this IEnumerable<INI.Section> s, string name) =>
         s.FirstOrDefault(i => i.Name == name);
+
+    public static IEnumerable<INI.Section> FindSubs(this IEnumerable<INI.Section> s, string name) =>
+        s.Where(i => i.Name.StartsWith($"{name}."));
 }

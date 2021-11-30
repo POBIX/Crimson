@@ -77,6 +77,8 @@ public abstract class ShaderBase : Component, IDisposable
     public void SetUniform(string name, float value) => SetUniform(name, value, out _);
     public void SetUniform(string name, double value) => SetUniform(name, value, out _);
     public void SetUniform(string name, uint value) => SetUniform(name, value, out _);
+    public void SetUniform(string name, Texture value, int binding) => SetUniform(name, value, binding, out _);
+    public void SetUniform(string name, Vector3 value) => SetUniform(name, value, out _);
 
     public void SetUniform(string name, Matrix matrix, bool transpose, out int location)
     {
@@ -103,6 +105,19 @@ public abstract class ShaderBase : Component, IDisposable
     {
         location = GetUniformLocation(name);
         Gl.ProgramUniform1(program, location, value);
+    }
+
+    public void SetUniform(string name, Vector3 value, out int location)
+    {
+        location = GetUniformLocation(name);
+        Gl.ProgramUniform3(program, location, value.x, value.y, value.z);
+    }
+
+    public void SetUniform(string name, Texture value, int binding, out int location)
+    {
+        location = GetUniformLocation(name);
+        value.Bind(binding);
+        Gl.ProgramUniform1(program, location, binding);
     }
 
     /// <summary>

@@ -35,7 +35,7 @@ public class Material : ShaderBase, IDisposable
         foreach (uint i in shaders.Values)
         {
             Gl.DetachShader(program, i);
-            Gl.DeleteShader(i);
+            // Gl.DeleteShader(i);
         }
         shaders.Clear();
 

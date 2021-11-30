@@ -40,7 +40,6 @@ public class Font : IDisposable
         face.SetPixelSizes(0, (uint)size);
         lineHeight = face.Size.Metrics.Height.Value;
 
-        Console.WriteLine(lineHeight >> 6);
         Gl.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
 
         // load first 128 ASCII characters.
@@ -167,7 +166,7 @@ public class Label : DrawableObject, IDisposable
     public Scene Scene { get; private set; }
 
     public Font Font { get; set; }
-    public string Text { get; set; }
+    public string Text { get; set; } = "";
 
     public float Rotation { get; set; }
     public Color Color { get; set; } = Color.White;

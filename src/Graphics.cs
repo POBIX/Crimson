@@ -35,7 +35,7 @@ public static class Graphics
 
     internal static Framebuffer fbo;
     private static Texture screenTexture;
-    private static Material screenMat;
+    internal static Material screenMat;
 
     private static readonly float[] ScreenVertices =
     {
@@ -296,8 +296,7 @@ public static class Graphics
         screenMat.BindVAO();
         screenMat.BindVBO();
 
-        screenTexture.Bind(0);
-        screenMat.SetUniform("TEXTURE", 0);
+        screenMat.SetUniform("TEXTURE", screenTexture, 0);
 
         screenMat.SetUniform("AMBIENT_LIGHT", Light.Ambience);
         screenMat.SetUniform("SCREEN_SIZE", Engine.Size);

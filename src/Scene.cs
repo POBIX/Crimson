@@ -161,5 +161,6 @@ public sealed partial class Scene
     {
         T t = new() { Scene = this };
         t.Start();
+        Start();
     }
 }

@@ -99,7 +99,7 @@ public struct Color
         throw new FormatException($"Color {str} in unexpected format");
     }
 
-    private static Random rnd = new();
+    private static Random rnd = new(69);
     public static Color Random() =>
         Byte(rnd.Next(0, 255), rnd.Next(0, 255), rnd.Next(0, 255));
 

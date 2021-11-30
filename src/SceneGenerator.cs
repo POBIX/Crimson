@@ -36,7 +36,7 @@ public abstract class SceneGenerator
         return t;
     }
 
-    protected T Obj<T>(Action<T> obj, Vector2 offset) where T : SceneObject, new()
+    protected T Obj<T>(Action<T> obj, Vector2 offset = new()) where T : SceneObject, new()
     {
         SceneObject prev = Current;
         T t = new()
@@ -51,5 +51,5 @@ public abstract class SceneGenerator
         return t;
     }
 
-    protected T Obj<T>(Action<T> obj) where T : SceneObject, new() => Obj(obj, Vector2.Zero);
+    protected T Obj<T>(Action<T> obj, float x, float y) where T : SceneObject, new() => Obj(obj, new(x, y));
 }

@@ -105,7 +105,7 @@ public class Sprite : Component
         }
     }
 
-    public Vector2 Frame
+    public new Vector2 Frame
     {
         get => new(FrameH, FrameV);
         set
@@ -162,8 +162,7 @@ public class Sprite : Component
 
         Material.BindVAO();
 
-        Texture.Bind(0);
-        Material.SetUniform("TEXTURE", 0);
+        Material.SetUniform("TEXTURE", Texture, 0);
 
         Material.SetUniform("SOURCE_SIZE", Source.Size);
         Material.SetUniform("SOURCE_POS", Source.Position);

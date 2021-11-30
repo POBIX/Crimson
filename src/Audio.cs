@@ -71,8 +71,8 @@ public unsafe class AudioPlayer : IDisposable
 
         streamFinishedCallback = OnStreamFinished;
 
-        const int readSize = 4096;
-        int size = readSize;
+        const int readSize = 512;
+        int size = readSize * 16;
         allocArr = Marshal.AllocHGlobal(size * sizeof(float));
         float* buffer = (float*)allocArr.ToPointer();
 
@@ -105,7 +105,7 @@ public unsafe class AudioPlayer : IDisposable
         Data userData = new()
         {
             start = buffer,
-            length = size,
+            length = i,
             channels = ps.channelCount,
             volume = volume
         };

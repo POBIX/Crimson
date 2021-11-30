@@ -61,7 +61,7 @@ public class Camera : Component
 
     private void Lerp()
     {
-        Origin = Mathf.Lerp(Origin, target - actualOffset, Interpolation).Rounded();
+        Origin = Mathf.Lerp(Origin, target - actualOffset, Interpolation);
         Transform = Matrix.Scaling(new(scale, 0)) * Matrix.Translation(new(-Origin, 0));
     }
 
