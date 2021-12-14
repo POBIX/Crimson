@@ -52,16 +52,17 @@ public static class Input
 
     private static Dictionary<string, List<IInputAction>> actions = new();
 
-    public static void AddHandler(InputBase i) => handlers.Add(i);
+    public static void AddHandler(InputBase i)
+    {
+        handlers.Add(i);
+        i.Init();
+    }
 
     internal static void Init()
     {
         AddHandler(new Keyboard());
         AddHandler(new Mouse());
         AddHandler(new Gamepad());
-
-        foreach (InputBase i in handlers)
-            i.Init();
     }
 
     internal static void Update()

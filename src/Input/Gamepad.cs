@@ -58,14 +58,18 @@ public class Gamepad : InputBase<JoyButton>
         public InputState[] curr;
         public InputState[] next;
 
-        public ButtonState()
+        public int index;
+
+        public ButtonState(int index)
         {
             // initialize them all so that it doesn't crash on first read
-            next = Glfw.GetJoystickButtons(Joystick.Joystick1);
+            next = Glfw.GetJoystickButtons((Joystick)index);
             prev = curr = new InputState[next.Length];
             // both arrays point to the same address so there's no need to initialize both.
             for (int i = 0; i < next.Length; i++)
                 curr[i] = InputState.Release;
+
+            this.index = index;
         }
 
         public bool Down(JoyButton button) =>
@@ -81,7 +85,7 @@ public class Gamepad : InputBase<JoyButton>
         {
             prev = curr;
             curr = next;
-            next = Glfw.GetJoystickButtons(Joystick.Joystick1);
+            next = Glfw.GetJoystickButtons((Joystick)index);
         }
     }
 
@@ -91,14 +95,18 @@ public class Gamepad : InputBase<JoyButton>
         public float[] curr;
         public float[] next;
 
-        public JoyState()
+        public int index;
+
+        public JoyState(int index)
         {
             // initialize them all so that it doesn't crash on first read
-            next = Glfw.GetJoystickAxes(Joystick.Joystick1);
+            next = Glfw.GetJoystickAxes((Joystick)index);
             prev = curr = new float[next.Length];
             // both arrays point to the same address so there's no need to initialize both.
             for (int i = 0; i < next.Length; i++)
                 curr[i] = 0;
+
+            this.index = index;
         }
 
         public bool Down(JoyAxis axis, bool positive, float deadzone) =>
@@ -121,7 +129,7 @@ public class Gamepad : InputBase<JoyButton>
         {
             prev = curr;
             curr = next;
-            next = Glfw.GetJoystickAxes(Joystick.Joystick1);
+            next = Glfw.GetJoystickAxes((Joystick)index);
 
             /// set trigger ranges between 0 and 1 instead of -1 and 1
             next[(int)JoyAxis.LTrigger] = (next[(int)JoyAxis.LTrigger] + 1) / 2;
@@ -131,8 +139,14 @@ public class Gamepad : InputBase<JoyButton>
 
     private class State
     {
-        public ButtonState buttons = new();
-        public JoyState joy = new();
+        public ButtonState buttons;
+        public JoyState joy;
+
+        public State(int index)
+        {
+            buttons = new(index);
+            joy = new(index);
+        }
 
         public void Update()
         {
@@ -141,33 +155,158 @@ public class Gamepad : InputBase<JoyButton>
         }
     }
 
-    private static State frame = new();
-    private static State update = new();
-    private static State state = frame;
+    private static State[] frames;
+    private static State[] updates;
+    private static State[] states;
+
+    private static int maxIndex;
+
+    // this is a field in order to avoid garbage collection of the delegate
+    private static JoystickCallback callback = ConnectionCallback;
+
+    internal override void Init()
+    {
+        base.Init();
+        frames = new State[16];
+        updates = new State[16];
+        states = frames;
+
+        for (int i = 0; i < 16; i++)
+        {
+            if (Glfw.JoystickPresent((Joystick)i) && Glfw.JoystickIsGamepad(i))
+            {
+                frames[i] = new(i);
+                updates[i] = new(i);
+                maxIndex = i;
+            }
+            else
+            {
+                frames[i] = null;
+                updates[i] = null;
+            }
+        }
+
+        Glfw.SetJoystickCallback(callback);
+    }
+
+    private static void ConnectionCallback(Joystick joystick, ConnectionStatus status)
+    {
+        int i = (int)joystick;
+        if (status == ConnectionStatus.Connected)
+        {
+            updates[i] = new(i);
+            frames[i] = new(i);
+            if (i > maxIndex) maxIndex = i;
+        }
+        else
+        {
+            updates[i] = null;
+            frames[i] = null;
+
+            // set the max index to not include the device that was just disconnected
+            //TODO: it crashes :(
+            int lastConnected = maxIndex;
+            for (int j = i; j <= maxIndex; j++)
+            {
+                if (frames[j] != null)
+                    lastConnected = j;
+            }
+            maxIndex = lastConnected;
+        }
+        Console.WriteLine($"{joystick} {status}");
+    }
 
     protected internal override void Update()
     {
         base.Update();
-        state.Update();
+        for (int i = 0; i <= maxIndex; i++)
+            states[i]?.Update();
     }
 
-    protected internal override void SetFrame() => state = frame;
-    protected internal override void SetUpdate() => state = update;
+    protected internal override void SetFrame() => states = frames;
+    protected internal override void SetUpdate() => states = updates;
 
-    protected override bool IsDownImpl(JoyButton key) => state.buttons.Down(key);
-    protected override bool IsUpImpl(JoyButton key) => state.buttons.Up(key);
-    protected override bool IsPressedImpl(JoyButton key) => state.buttons.Pressed(key);
-    protected override bool IsReleasedImpl(JoyButton key) => state.buttons.Released(key);
+    protected override bool IsDownImpl(JoyButton key)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.buttons.Down(key) ?? false)
+                return true;
+        }
+        return false;
+    }
 
-    public static float GetAxis(JoyAxis axis) => state.joy.Axis(axis);
-    public static bool IsDown(JoyAxis axis, bool positive, float deadzone = 0.15f) =>
-        state.joy.Down(axis, positive, deadzone);
-    public static bool IsUp(JoyAxis axis, bool positive, float deadzone = 0.15f) =>
-        state.joy.Up(axis, positive, deadzone);
-    public static bool IsPressed(JoyAxis axis, bool positive, float deadzone = 0.15f) =>
-        state.joy.Pressed(axis, positive, deadzone);
-    public static bool IsReleased(JoyAxis axis, bool positive, float deadzone = 0.15f) =>
-        state.joy.Released(axis, positive, deadzone);
+    protected override bool IsUpImpl(JoyButton key)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.buttons.Up(key) ?? false)
+                return true;
+        }
+        return false;
+    }
+
+    protected override bool IsPressedImpl(JoyButton key)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.buttons.Pressed(key) ?? false)
+                return true;
+        }
+        return false;
+    }
+
+    protected override bool IsReleasedImpl(JoyButton key)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.buttons.Released(key) ?? false)
+                return true;
+        }
+        return false;
+    }
+
+    public static float GetAxis(JoyAxis axis, int index = 0) => states[index].joy.Axis(axis);
+
+    public static bool IsDown(JoyAxis axis, bool positive, float deadzone)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.joy.Down(axis, positive, deadzone) ?? false)
+                return true;
+        }
+        return false;
+    }
+
+    public static bool IsUp(JoyAxis axis, bool positive, float deadzone)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.joy.Up(axis, positive, deadzone) ?? false)
+                return true;
+        }
+        return false;
+    }
+
+    public static bool IsPressed(JoyAxis axis, bool positive, float deadzone)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.joy.Pressed(axis, positive, deadzone) ?? false)
+                return true;
+        }
+        return false;
+    }
+
+    public static bool IsReleased(JoyAxis axis, bool positive, float deadzone)
+    {
+        for (int i = 0; i <= maxIndex; i++)
+        {
+            if (states[i]?.joy.Released(axis, positive, deadzone) ?? false)
+                return true;
+        }
+        return false;
+    }
 }
 
 public class JoyButtonAction : InputActionBase<JoyButton>
