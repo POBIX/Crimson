@@ -63,8 +63,8 @@ public class Trigger : Component
     {
         base.Update(delta);
 
-        // list and not IEnumerable in order to avoid multiple enumeration
-        List<ICollide> sceneColliders = Scene.GetComponentsOfType<ICollide>().ToList();
+        // array and not IEnumerable in order to avoid multiple enumeration
+        ICollide[] sceneColliders = Scene.GetComponentsOfType<ICollide>().ToArray();
         foreach (ICollide collider in colliders)
         {
             foreach (ICollide c in sceneColliders)
@@ -149,7 +149,7 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
     {
         info = new() { Target = target, Entity = target.Entity };
         Rect a = source.Bounds;
-        Rect b = new(target.Position - target.Size / 2 - a.Size / 2, target.Size + a.Size);
+        Rect b = new(target.Bounds.Position - target.Size / 2 - a.Size / 2, target.Size + a.Size);
         Vector2 origin = a.Position;
         if (!GetBroadphase(origin, Bounds, velocity))
             return false;

@@ -110,6 +110,7 @@ public sealed class Entity : DrawableObject, IDisposable
     {
         components.Remove(c);
         ComponentRemoved?.Invoke(c);
+        if (c is IDisposable d) d.Dispose();
     }
 
     /// <summary>
@@ -211,7 +212,9 @@ public sealed class Entity : DrawableObject, IDisposable
     public void Dispose()
     {
         foreach (IDisposable d in GetComponents<IDisposable>())
+        {
             d.Dispose();
+        }
         GC.SuppressFinalize(this);
     }
 

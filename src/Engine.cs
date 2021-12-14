@@ -287,7 +287,6 @@ public static class Engine
     /// </summary>
     public static void Start() => Scene.Start();
 
-    private static Stopwatch s = new();
     public static void SimpleUpdate()
     {
         FrameTime = GetFrameTime();
@@ -307,14 +306,11 @@ public static class Engine
         Graphics.Queue = Graphics.uQueue;
         Input.SetUpdate();
         Updated = false;
-        s.Reset();
         while (accumulator >= PhysicsStep)
         {
             Updated = true;
             Input.Update();
-            s.Start();
             Scene.Update(PhysicsStep);
-            s.Stop();
             accumulator -= PhysicsStep;
         }
 
@@ -343,9 +339,7 @@ public static class Engine
 
     public static void EndDraw()
     {
-        s.Start();
         Scene.Draw();
-        s.Stop();
         Graphics.Draw();
         Graphics.RenderToScreen();
         Drawing = false;

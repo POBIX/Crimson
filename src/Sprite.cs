@@ -172,13 +172,10 @@ public class Sprite : Component
 
     public void NextFrame()
     {
-        if (FrameH + 1 < FramesH) FrameH++;
-        else
+        if (++FrameH >= FramesH)
         {
             FrameH = 0;
-            if (FrameV + 1 < FramesV)
-                FrameV++;
-            else
+            if (++FrameV >= FramesV)
                 FrameV = 0;
         }
     }
