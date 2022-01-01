@@ -1,0 +1,38 @@
+﻿#version 460 core
+
+layout (local_size_x = 16, local_size_y = 16) in;
+
+uniform vec2 POS;
+uniform vec2 SIZE;
+
+layout (rgba32f) uniform image2D OUTPUT;
+
+layout (rgba32f) uniform readonly image2D INPUT;
+uniform vec2 CLIP;
+uniform bool ERASE;
+
+uniform vec2 SCREEN_SIZE;
+
+bool contains(vec4 rect, ivec2 point)
+{
+    return point.x >= rect.x && point.x < rect.x + rect.z &&
+           point.y >= rect.y && point.y < rect.y + rect.w;
+}
+
+void main()
+{
+    ivec2 id = ivec2(gl_GlobalInvocationID.xy);
+    vec2 pos = vec2(POS.x, SCREEN_SIZE.y - POS.y);
+    if (!contains(vec4(pos - SIZE / 2, SIZE), id)) return;
+
+    if (!ERASE)
+    {
+        ivec2 p = ivec2(pos - SIZE / 2);
+        ivec2 s = ivec2(
+            CLIP.x + id.x - p.x,
+            CLIP.y + int(SIZE.y - 1) - id.y + p.y // y axis is flipped
+        );
+        imageStore(OUTPUT, id, imageLoad(INPUT, s));
+    }
+    else imageStore(OUTPUT, id, vec4(0));
+}
