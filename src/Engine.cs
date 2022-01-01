@@ -242,7 +242,7 @@ public static class Engine
         bool winBorderless = false;
 
         bool sizeChanged = false;
-        foreach (var (key, value) in sections.Find("Window"))
+        foreach (var (key, value) in sections.Find("Window")!)
         {
             switch (key)
             {

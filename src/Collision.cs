@@ -1,8 +1,16 @@
-﻿namespace Crimson;
+﻿using System.Collections.ObjectModel;
+
+namespace Crimson;
 
 public class Controller : Component
 {
     private List<ICollide> colliders;
+    public ReadOnlyCollection<ICollide> Colliders => colliders.AsReadOnly();
+
+    /// <summary>
+    /// The controller's last reported velocity. (Updated with <see cref="Move"/>)
+    /// </summary>
+    public Vector2 Velocity { get; private set; }
 
     public override void Start()
     {
@@ -33,6 +41,8 @@ public class Controller : Component
             }
             collider.RespondAny(this, velocity, collisions);
         }
+
+        Velocity = velocity;
     }
 }
 
@@ -64,15 +74,35 @@ public class Trigger : Component
         base.Update(delta);
 
         // array and not IEnumerable in order to avoid multiple enumeration
-        ICollide[] sceneColliders = Scene.GetComponentsOfType<ICollide>().ToArray();
+        Controller[] controllers = Scene.GetComponentsOfType<Controller>().ToArray();
         foreach (ICollide collider in colliders)
         {
-            foreach (ICollide c in sceneColliders)
+            foreach (Controller controller in controllers)
             {
-                if (c == collider) continue;
-                Entity e = ((Component)c).Entity;
-                bool colliding = collider.IsCollidingAny(collider, c, Vector2.Zero, out _);
+                Entity e = controller.Entity;
+
+                bool colliding = false;
                 bool contains = collisions.Contains(e);
+
+                foreach (ICollide c in controller.Colliders)
+                {
+                    // Some collision algorithms assume objects are not in collision to begin with, and would output false
+                    // in case they're already inside of each other.
+                    // If they were colliding during the last frame, use an algorithm which doesn't do that.
+                    if (contains)
+                    {
+                        if (c.IsStillCollidingAny(c, collider, controller.Velocity))
+                        {
+                            colliding = true;
+                            break;
+                        }
+                    }
+                    else if (c.IsCollidingAny(c, collider, controller.Velocity, out _))
+                    {
+                        colliding = true;
+                        break;
+                    }
+                }
                 if (colliding && !contains)
                 {
                     Entered?.Invoke(e);
@@ -91,7 +121,7 @@ public class Trigger : Component
 /// <summary> Used internally. You're probably looking for the generic version. </summary>
 public interface ICollide
 {
-    public bool Block { get; set; }
+    internal bool IsStillCollidingAny(ICollide a, ICollide b, Vector2 velocity);
     internal bool IsCollidingAny(ICollide a, ICollide b, Vector2 velocity, out object info);
     internal void RespondAny(Controller body, Vector2 velocity, List<object> collisions);
 }
@@ -112,8 +142,18 @@ public interface ICollide<in T1, in T2, TInfo> : ICollide where TInfo : new()
     void ICollide.RespondAny(Controller body, Vector2 velocity, List<object> collisions) =>
         Respond(body, velocity, collisions.Cast<TInfo>().ToList());
 
+    bool ICollide.IsStillCollidingAny(ICollide a, ICollide b, Vector2 velocity) =>
+        IsStillColliding((T1)a, (T2)b, velocity);
+
     bool IsColliding(T1 a, T2 b, Vector2 velocity, out TInfo info);
     void Respond(Controller body, Vector2 velocity, List<TInfo> collisions);
+
+    /// <summary>
+    /// Implement only if your algorithm assumes objects are NOT in collision to begin with.
+    /// This will only ever get called if objects were found to be colliding in the previous frame (using <seealso cref="IsColliding"/>),
+    /// and is only used with triggers.
+    /// </summary>
+    bool IsStillColliding(T1 a, T2 b, Vector2 velocity) => IsColliding(a, b, velocity, out _);
 }
 
 public struct BoxCollisionInfo
@@ -197,5 +237,17 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
             velocity.y = dot * info.Normal.x;
         }
         Position += velocity;
+    }
+
+    public bool IsStillColliding(BoxCollider ac, BoxCollider bc, Vector2 velocity)
+    {
+        Rect a = new(ac.Position + velocity - ac.Size / 2, ac.Size);
+        Rect b = new(bc.Position - bc.Size / 2, bc.Size);
+
+        return a.x < b.x + b.w &&
+               a.x + a.w > b.x &&
+               a.y < b.y + b.h &&
+               a.y + a.h > b.y;
+
     }
 }
