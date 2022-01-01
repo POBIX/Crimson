@@ -15,14 +15,14 @@ public class Controller : Component
     public override void Start()
     {
         base.Start();
-        colliders = GetComponents<ICollide>().ToList();
+        colliders = GetComponents<ICollide>().Where(c => c.Block).ToList();
         Entity.ComponentAdded += c =>
         {
-            if (c is ICollide l) colliders.Add(l);
+            if (c is ICollide l && l.Block) colliders.Add(l);
         };
         Entity.ComponentRemoved += c =>
         {
-            if (c is ICollide l) colliders.Remove(l);
+            if (c is ICollide l && l.Block) colliders.Remove(l);
         };
     }
 
@@ -58,14 +58,14 @@ public class Trigger : Component
     public override void Start()
     {
         base.Start();
-        colliders = GetComponents<ICollide>().ToList();
+        colliders = GetComponents<ICollide>().Where(c => !c.Block).ToList();
         Entity.ComponentAdded += c =>
         {
-            if (c is ICollide l) colliders.Add(l);
+            if (c is ICollide l && !l.Block) colliders.Add(l);
         };
         Entity.ComponentRemoved += c =>
         {
-            if (c is ICollide l) colliders.Remove(l);
+            if (c is ICollide l && !l.Block) colliders.Remove(l);
         };
     }
 
@@ -121,6 +121,7 @@ public class Trigger : Component
 /// <summary> Used internally. You're probably looking for the generic version. </summary>
 public interface ICollide
 {
+    bool Block { get; set; }
     internal bool IsStillCollidingAny(ICollide a, ICollide b, Vector2 velocity);
     internal bool IsCollidingAny(ICollide a, ICollide b, Vector2 velocity, out object info);
     internal void RespondAny(Controller body, Vector2 velocity, List<object> collisions);
@@ -244,10 +245,7 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
         Rect a = new(ac.Position + velocity - ac.Size / 2, ac.Size);
         Rect b = new(bc.Position - bc.Size / 2, bc.Size);
 
-        return a.x < b.x + b.w &&
-               a.x + a.w > b.x &&
-               a.y < b.y + b.h &&
-               a.y + a.h > b.y;
-
+        return a.x < b.x + b.w && a.x + a.w > b.x &&
+               a.y < b.y + b.h && a.y + a.h > b.y;
     }
 }

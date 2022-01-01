@@ -22,15 +22,14 @@ bool contains(vec4 rect, ivec2 point)
 void main()
 {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
-    vec2 pos = vec2(POS.x, SCREEN_SIZE.y - POS.y);
-    if (!contains(vec4(pos - SIZE / 2, SIZE), id)) return;
+    ivec2 pos = ivec2(POS.x, SCREEN_SIZE.y - POS.y);
+    if (!contains(vec4(pos, SIZE), id)) return;
 
     if (!ERASE)
     {
-        ivec2 p = ivec2(pos - SIZE / 2);
         ivec2 s = ivec2(
-            CLIP.x + id.x - p.x,
-            CLIP.y + int(SIZE.y - 1) - id.y + p.y // y axis is flipped
+            CLIP.x + id.x - pos.x,
+            CLIP.y + int(SIZE.y - 1) - id.y + pos.y // y axis is flipped, offset by 1 for unclear reason
         );
         imageStore(OUTPUT, id, imageLoad(INPUT, s));
     }
