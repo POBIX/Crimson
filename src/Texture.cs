@@ -21,29 +21,52 @@ public class Texture : IDisposable
     public int Width => (int)Size.x;
     public int Height => (int)Size.y;
 
-    public string FilePath { get; }
+    /// <summary>
+    /// Loads raw data into the texture.
+    /// </summary>
+    /// <param name="data">The data pointer.</param>
+    public void SetData(IntPtr data)
+    {
+        BindObject();
+        Gl.TexImage2D(
+            TextureTarget.Texture2d, 0, InternalFormat.Rgba32f, Width, Height,
+            0, PixelFormat.Bgra, PixelType.UnsignedByte, data
+        );
+    }
+
+    /// <summary>
+    /// Sets the texture filter. false - Nearest, true - Linear.
+    /// </summary>
+    /// <param name="filter"></param>
+    public void SetFilter(bool filter)
+    {
+        BindObject();
+        Gl.TexParameter(
+            TextureTarget.Texture2d, TextureParameterName.TextureMinFilter,
+            filter ? (int)TextureMinFilter.Nearest : (int)TextureMinFilter.Linear
+        );
+        Gl.TexParameter(
+            TextureTarget.Texture2d, TextureParameterName.TextureMagFilter,
+            filter ? (int)TextureMagFilter.Nearest : (int)TextureMagFilter.Linear
+        );
+    }
 
     /// <summary>
     /// Loads a texture from an image.
     /// </summary>
     /// <param name="filePath">The path to the image.</param>
-    public Texture(string filePath)
+    public Texture(string filePath, bool filter = false)
     {
-        FilePath = filePath;
-        using Bitmap bmp = new(filePath);
         id = Gl.GenTexture();
+
+        using Bitmap bmp = new(filePath);
 
         BitmapData data = bmp.LockBits(
             new(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, DrawingFormat.Format32bppArgb
         );
 
-        Gl.BindTexture(TextureTarget.Texture2d, id);
-        Gl.TexParameter(TextureTarget.Texture2d, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        Gl.TexParameter(TextureTarget.Texture2d, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-        Gl.TexImage2D(
-            TextureTarget.Texture2d, 0, InternalFormat.Rgba32f, bmp.Width, bmp.Height,
-            0, PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0
-        );
+        SetData(data.Scan0);
+        SetFilter(filter);
 
         Gl.GenerateMipmap(TextureTarget.Texture2d);
 
@@ -52,21 +75,17 @@ public class Texture : IDisposable
         Size = new Vector2(bmp.Width, bmp.Height);
     }
 
+
     /// <summary>
     /// Creates an empty texture with a specified width and height.
     /// </summary>
-    public Texture(int width, int height, bool generateMipmaps = true)
+    public Texture(int width, int height, bool generateMipmaps = true, bool filter = false)
     {
         id = Gl.GenTexture();
         Size = new(width, height);
 
-        Gl.BindTexture(TextureTarget.Texture2d, id);
-        Gl.TexParameter(TextureTarget.Texture2d, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        Gl.TexParameter(TextureTarget.Texture2d, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-        Gl.TexImage2D(
-            TextureTarget.Texture2d, 0, InternalFormat.Rgba32f, width, height,
-            0, PixelFormat.Bgra, PixelType.UnsignedByte, IntPtr.Zero
-        );
+        SetData(IntPtr.Zero);
+        SetFilter(filter);
 
         if (generateMipmaps) Gl.GenerateMipmap(TextureTarget.Texture2d);
     }
@@ -74,7 +93,8 @@ public class Texture : IDisposable
     /// <summary>
     /// Creates an empty texture with a specified size.
     /// </summary>
-    public Texture(Vector2 size, bool generateMipmaps = true) : this((int)size.x, (int)size.y, generateMipmaps) { }
+    public Texture(Vector2 size, bool generateMipmaps = true, bool filter = false)
+        : this((int)size.x, (int)size.y, generateMipmaps, filter) { }
 
     public void BindImage(BufferAccess access, int unit) =>
         Gl.BindImageTexture((uint)unit, id, 0, false, 0, (GLAccess)access, InternalFormat.Rgba32f);

@@ -9,7 +9,7 @@ public abstract class Shader : Component, IDisposable
 
     public delegate void UniformSetter<T>(uint program, int location, in T value);
 
-    internal static class UniformSet<T>
+    private static class UniformSet<T>
     {
         public static UniformSetter<T> value;
     }

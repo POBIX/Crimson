@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Crimson;
 using GLFW;
+using ImGuiNET;
 using OpenGL;
 using Monitor = GLFW.Monitor;
 
@@ -182,6 +183,11 @@ public static class Engine
     }
 
     /// <summary>
+    /// GUI Controller. Use ImGuiNET.ImGui.* inside of an Update() or Frame() function in order to create UI.
+    /// </summary>
+    public static ImGuiController GUI { get; private set; }
+
+    /// <summary>
     /// Creates a window and initializes Engine. Can only be called once.
     /// </summary>
     /// <param name="width">The window's width</param>
@@ -189,6 +195,7 @@ public static class Engine
     /// <param name="title">The window's title</param>
     public static void Create(int width, int height, string title, bool fullscreen = false, bool borderless = false)
     {
+
         // not using the properties on purpose, as they'll resize the window, which doesn't even exist yet.
         Engine.width = width;
         Engine.height = height;
@@ -223,6 +230,9 @@ public static class Engine
         AudioPlayer.Init();
         Graphics.Init();
         Scene.InitTweens();
+        GUI = new();
+        Glfw.SetCharCallback(handle, (_, point) => GUI.PressChar((char)point));
+        Glfw.SetScrollCallback(handle, (_, x, y) => ImGuiController.MouseScroll(new((float)x, (float)y)));
 
         currFrame = (float)Glfw.Time;
 
@@ -325,8 +335,10 @@ public static class Engine
     /// </summary>
     public static void Update()
     {
+        GUI.Update(FrameTime);
         SimpleUpdate();
         BeginDraw();
+        GUI.Render();
         EndDraw();
     }
 
