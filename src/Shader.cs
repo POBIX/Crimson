@@ -7,9 +7,12 @@ public abstract class Shader : Component, IDisposable
 {
     private Dictionary<string, int> uniformLocs = new();
 
-    public delegate void UniformSetter<in T>(uint program, int location, T value);
+    public delegate void UniformSetter<T>(uint program, int location, in T value);
 
-    private static Dictionary<Type, UniformSetter<object>> uniformSetters = new();
+    internal static class UniformSet<T>
+    {
+        public static UniformSetter<T> value;
+    }
 
     /// <summary> The time elapsed since the Material was created. </summary>
     public float Time { get; private set; }
@@ -18,15 +21,14 @@ public abstract class Shader : Component, IDisposable
 
     static Shader()
     {
-        RegisterUniformSetter<int>(Gl.ProgramUniform1);
-        RegisterUniformSetter<float>(Gl.ProgramUniform1);
-        RegisterUniformSetter<uint>(Gl.ProgramUniform1);
-        RegisterUniformSetter<double>(Gl.ProgramUniform1);
-        RegisterUniformSetter<bool>((p, l, v) => Gl.ProgramUniform1(p, l, v ? 1 : 0));
-        RegisterUniformSetter<Vector2>((p, l, v) => Gl.ProgramUniform2(p, l, v.x, v.y));
-        RegisterUniformSetter<Vector3>((p, l, v) => Gl.ProgramUniform3(p, l, v.x, v.y, v.z));
-        RegisterUniformSetter<Vector4>((p, l, v) => Gl.ProgramUniform4(p, l, v.x, v.y, v.z, v.w));
-        RegisterUniformSetter<Color>((p, l, v) => Gl.ProgramUniform4(p, l, v.r, v.g, v.b, v.a));
+        RegisterUniformSetter((uint p, int l, in int v) => Gl.ProgramUniform1(p, l, v));
+        RegisterUniformSetter((uint p, int l, in float v) => Gl.ProgramUniform1(p, l, v));
+        RegisterUniformSetter((uint p, int l, in uint v) => Gl.ProgramUniform1(p, l, v));
+        RegisterUniformSetter((uint p, int l, in bool v) => Gl.ProgramUniform1(p, l, v ? 1 : 0));
+        RegisterUniformSetter((uint p, int l, in Vector2 v) => Gl.ProgramUniform2(p, l, v.x, v.y));
+        RegisterUniformSetter((uint p, int l, in Vector3 v) => Gl.ProgramUniform3(p, l, v.x, v.y, v.z));
+        RegisterUniformSetter((uint p, int l, in Vector4 v) => Gl.ProgramUniform4(p, l, v.x, v.y, v.z, v.w));
+        RegisterUniformSetter((uint p, int l, in Color v) => Gl.ProgramUniform4(p, l, v.r, v.g, v.b, v.a));
     }
 
     protected Shader() => program = Gl.CreateProgram();
@@ -63,11 +65,11 @@ public abstract class Shader : Component, IDisposable
         return location;
     }
 
-    public void SetUniform<T>(string name, T value)
+    public void SetUniform<T>(string name, in T value)
     {
-        if (!uniformSetters.ContainsKey(typeof(T)))
+        if (UniformSet<T>.value == null)
             throw new KeyNotFoundException($"No setter registered for type {typeof(T)}. Use Shader.RegisterUniformSetter");
-        uniformSetters[typeof(T)](program, GetUniformLocation(name), value);
+        UniformSet<T>.value(program, GetUniformLocation(name), in value);
     }
 
     public void SetUniform(string name, Matrix2 value, bool transpose) =>
@@ -95,8 +97,7 @@ public abstract class Shader : Component, IDisposable
         SetUniform(name, unit);
     }
 
-    public static void RegisterUniformSetter<T>(UniformSetter<T> setter) =>
-        uniformSetters.Add(typeof(T), (p, l, v) => setter(p, l, (T)v));
+    public static void RegisterUniformSetter<T>(UniformSetter<T> setter) => UniformSet<T>.value = setter;
 
     /// <summary>
     /// Sets and updates TIME, CAM_SIZE and SCREEN_SIZE. Automatically called if attached to an entity.

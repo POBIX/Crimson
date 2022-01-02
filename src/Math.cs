@@ -2,6 +2,7 @@
  * Most of this file was taken (and heavily modified) from https://github.com/dwmkerr/glmnet.
  */
 
+using System.Diagnostics.Contracts;
 using static System.MathF;
 
 // weird warnings about overloading Equals() and GetHashCode()
@@ -328,6 +329,7 @@ public struct Matrix
     /// Returns the matrix as a flat array of elements, column major.
     /// </summary>
     /// <returns></returns>
+    [Pure]
     public float[] ToArray() =>
         new[]
         {
@@ -931,6 +933,7 @@ public struct Matrix2
     /// Returns the matrix as a flat array of elements, column major.
     /// </summary>
     /// <returns></returns>
+    [Pure]
     public float[] ToArray() =>
         new[]
         {
@@ -1128,6 +1131,7 @@ public struct Matrix3
     /// Returns the matrix as a flat array of elements, column major.
     /// </summary>
     /// <returns></returns>
+    [Pure]
     public float[] ToArray()
     {
         return new[]
