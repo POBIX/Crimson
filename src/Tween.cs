@@ -16,17 +16,14 @@ public class Tweener<T> : SceneObject
     public Scene Scene { get; private set; }
     public override void SetScene(Scene value) => Scene = value;
 
-    private Func<T, T, float, T> calc;
-    private static Dictionary<Type, Func<T, T, float, T>> calculators = new();
+    private static Func<T, T, float, T> calculate;
 
     public event Action Finished;
 
-    public static void Register(Func<T, T, float, T> equation) =>
-        calculators.Add(typeof(T), equation);
+    public static void Register(Func<T, T, float, T> equation) => calculate = equation;
 
     public Tweener(Action<T> setter, T initial, T target, float duration)
     {
-        calc = calculators[typeof(T)];
         Initial = initial;
         Target = target;
         Duration = duration;
@@ -46,7 +43,7 @@ public class Tweener<T> : SceneObject
             else Finished();
             Finished = null; // clear its subscriptions
         }
-        else set(calc(Initial, Target, easing(Elapsed / Duration)));
+        else set(calculate(Initial, Target, easing(Elapsed / Duration)));
 
     }
 
