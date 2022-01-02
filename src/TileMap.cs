@@ -157,26 +157,22 @@ public class TileMap : Component
         CustomTilesLayer = new TileLayer { Name = "Crimson#CustomTiles", Tiles = new(), TileMap = this };
         Layers.Add(CustomTilesLayer);
 
-        Texture = new(
+        spriteEntity.Material = spriteEntity.AddComponent<Material>();
+        spriteEntity.Start();
+        Material prevMat = Material.Current;
+        spriteEntity.Material.Use();
+        Texture = Framebuffer.Draw(
             Mathf.Max(Engine.Width, (int)(MapSize.x * TileSize.x)),
-            Mathf.Max(Engine.Height, (int)(MapSize.y * TileSize.y))
+            Mathf.Max(Engine.Height, (int)(MapSize.y * TileSize.y)),
+            spriteEntity.Draw
         );
+        prevMat?.Use();
+
         Sprite s = AddComponent<Sprite>();
         s.Offset = Texture.Size / 2;
         s.Texture = Texture;
         s.FlipV = true;
         s.Start();
-
-        using Framebuffer fbo = new();
-        Texture.Bind(0);
-        fbo.AttachTexture(Texture, 0);
-
-        spriteEntity.Material = spriteEntity.AddComponent<Material>();
-        spriteEntity.Start();
-        Material prevMat = Material.Current;
-        spriteEntity.Material.Use();
-        spriteEntity.Draw();
-        prevMat?.Use();
 
         tileSetter = new();
         tileSetter.AttachText(Resources.Read("shaders/set-tile.comp"));
