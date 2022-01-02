@@ -1,9 +1,35 @@
 ﻿namespace Crimson;
 
+public struct CollisionLayer
+{
+    public ulong Data { get; set; }
+
+    public static CollisionLayer All => new(ulong.MaxValue);
+    public static CollisionLayer None => new(0);
+
+    public CollisionLayer(ulong l) => Data = l;
+
+    public void SetBit(int n, bool val) =>
+        Data = val ? Data | (uint)(1 << n) : Data & (uint)~(1 << n);
+
+    public bool GetBit(int n) => (Data & (uint)(1 << n)) == 1;
+
+    public static implicit operator ulong(CollisionLayer c) => c.Data;
+    public static implicit operator CollisionLayer(ulong l) => new(l);
+
+    public static CollisionLayer WithBit(int n)
+    {
+        CollisionLayer l = new(0);
+        l.SetBit(n, true);
+        return l;
+    }
+}
+
 /// <summary> Used internally. You're probably looking for the generic version. </summary>
 public interface ICollide
 {
     bool Block { get; set; }
+    CollisionLayer Layer { get; set; }
     internal bool IsStillCollidingAny(ICollide a, ICollide b, Vector2 velocity);
     internal bool IsCollidingAny(ICollide a, ICollide b, Vector2 velocity, out object info);
     internal void RespondAny(Controller body, Vector2 velocity, List<object> collisions);

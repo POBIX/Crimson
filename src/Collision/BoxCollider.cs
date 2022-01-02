@@ -16,6 +16,7 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
     public Vector2 Size { get; set; }
 
     public bool Block { get; set; } = true;
+    public CollisionLayer Layer { get; set; }
 
     private static bool GetBroadphase(Vector2 pos, Rect rect, Vector2 vel)
     {
@@ -34,6 +35,10 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
                              out BoxCollisionInfo info)
     {
         info = new() { Target = target, Entity = target.Entity };
+
+        // if the objects share no common layers, there's no collision.
+        if ((source.Layer & target.Layer) == 0) return false;
+
         Rect a = source.Bounds;
         Rect b = new(target.Bounds.Position - target.Size / 2 - a.Size / 2, target.Size + a.Size);
         if (!GetBroadphase(origin, Bounds, velocity))
@@ -97,9 +102,9 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
     }
 
     private Entity targetEntity = new();
-    public bool Intersects(BoxCollider collider, Vector2 origin, Vector2 velocity, out RaycastHit hit)
+    public bool Intersects(BoxCollider collider, Vector2 origin, Vector2 velocity, CollisionLayer layer, out RaycastHit hit)
     {
-        BoxCollider target = new() { Block = true, Offset = origin, Size = Vector2.One };
+        BoxCollider target = new() { Block = true, Offset = origin, Size = Vector2.One, Layer = layer };
         targetEntity.AddComponent(target);
         if (IsColliding(target, collider, velocity, out BoxCollisionInfo info))
         {
