@@ -12,7 +12,7 @@ public enum ShaderType
     TessEvaluation = GLType.TessEvaluationShader,
 }
 
-public class Material : ShaderBase, IDisposable
+public class Material : Shader, IDisposable
 {
     internal uint vao;
     internal uint vbo;

@@ -3,7 +3,30 @@ using GLType = OpenGL.ShaderType;
 
 namespace Crimson;
 
-public class ComputeShader : ShaderBase, IDisposable
+[Flags]
+public enum MemoryBarriers : uint
+{
+    All = MemoryBarrierMask.AllBarrierBits,
+    AtomicCounter = MemoryBarrierMask.AtomicCounterBarrierBit,
+    BufferUpdate = MemoryBarrierMask.BufferUpdateBarrierBit,
+    ClientMappedBuffer = MemoryBarrierMask.ClientMappedBufferBarrierBit,
+    CommandBarrier = MemoryBarrierMask.CommandBarrierBit,
+    ElementArray = MemoryBarrierMask.ElementArrayBarrierBit,
+    Framebuffer = MemoryBarrierMask.FramebufferBarrierBit,
+    PixelBuffer = MemoryBarrierMask.PixelBufferBarrierBit,
+    QueryBuffer = MemoryBarrierMask.QueryBufferBarrierBit,
+    ShaderGlobalAccess = MemoryBarrierMask.ShaderGlobalAccessBarrierBitNv,
+    ShaderImageAccess = MemoryBarrierMask.ShaderImageAccessBarrierBit,
+    ShaderStorage = MemoryBarrierMask.ShaderStorageBarrierBit,
+    TextureFetch = MemoryBarrierMask.TextureFetchBarrierBit,
+    TextureUpdate = MemoryBarrierMask.TextureUpdateBarrierBit,
+    TransformFeedback = MemoryBarrierMask.TransformFeedbackBarrierBit,
+    Uniform = MemoryBarrierMask.UniformBarrierBit,
+    VertexAttribArray = MemoryBarrierMask.VertexAttribArrayBarrierBit,
+    None = 0
+}
+
+public class ComputeShader : Shader, IDisposable
 {
     public ComputeShader() => program = Gl.CreateProgram();
 
@@ -23,17 +46,11 @@ public class ComputeShader : ShaderBase, IDisposable
         Gl.DeleteShader(shader);
     }
 
-    public void Dispatch(int groupsX, int groupsY, int groupsZ)
+    public void Dispatch(int groupsX, int groupsY, int groupsZ, MemoryBarriers barriers)
     {
         Gl.UseProgram(program);
         Gl.DispatchCompute((uint)groupsX, (uint)groupsY, (uint)groupsZ);
-        Gl.MemoryBarrier(MemoryBarrierMask.ShaderImageAccessBarrierBit);
-    }
-
-    public void SetUniformImage(string name, Texture tex, BufferAccess access, int unit)
-    {
-        tex.BindImage(access, unit);
-        SetUniform(name, unit);
+        if (barriers != MemoryBarriers.None) Gl.MemoryBarrier((MemoryBarrierMask)barriers);
     }
 
     protected override void Dispose(bool disposing)
@@ -44,63 +61,4 @@ public class ComputeShader : ShaderBase, IDisposable
     }
 
     ~ComputeShader() => Dispose(false);
-}
-
-/// <summary>
-/// A shader storage buffer object (SSBO)
-/// </summary>
-public unsafe class ShaderBuffer<T> : IDisposable where T : unmanaged
-{
-    private int length;
-    private uint index;
-
-    private uint id;
-
-    public ShaderBuffer(uint index)
-    {
-        id = Gl.GenBuffer();
-        this.index = index;
-    }
-
-    public ShaderBuffer(int index) : this((uint)index) { }
-
-    public ShaderBuffer(ShaderBase shader, string name) : this(
-        Gl.GetProgramResourceIndex(shader.program, ProgramInterface.ShaderStorageBlock, name)
-    ) { }
-
-    public void SetData(T[] arr)
-    {
-        Bind();
-        length = arr.Length;
-        Gl.BufferData(BufferTarget.ShaderStorageBuffer, (uint)(length * sizeof(T)), arr, BufferUsage.DynamicCopy);
-    }
-
-    public void GetData(ref T[] output)
-    {
-        if (output.Length != length) output = new T[length];
-        Gl.BindBuffer(BufferTarget.ShaderStorageBuffer, id);
-        IntPtr p = Gl.MapBuffer(BufferTarget.ShaderStorageBuffer, OpenGL.BufferAccess.WriteOnly);
-        T* data = (T*)p;
-        for (int i = 0; i < length; i++)
-            output[i] = data![i];
-
-        Gl.UnmapBuffer(BufferTarget.ShaderStorageBuffer);
-    }
-
-    public void Bind()
-    {
-        Gl.BindBuffer(BufferTarget.ShaderStorageBuffer, id);
-        Gl.BindBufferBase(BufferTarget.ShaderStorageBuffer, index, id);
-    }
-
-    private void ReleaseUnmanagedResources() =>
-        Gl.DeleteBuffers(id);
-
-    public void Dispose()
-    {
-        ReleaseUnmanagedResources();
-        GC.SuppressFinalize(this);
-    }
-
-    ~ShaderBuffer() => ReleaseUnmanagedResources();
 }

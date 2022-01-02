@@ -244,7 +244,7 @@ public class TileMap : Component
 
         tileSetter.SetUniform("POS", mapCoords * TileSize - TileSize / 2 * new Vector2(1, -1)); // y axis is flipped
         tileSetter.SetUniform("SIZE", TileSize);
-        tileSetter.SetUniformImage("OUTPUT", Texture, BufferAccess.Write, 0);
+        tileSetter.SetUniform("OUTPUT", Texture, BufferAccess.Write, 0);
 
         if (id != 0)
         {
@@ -252,12 +252,12 @@ public class TileMap : Component
             CustomTilesLayer.Tiles.Add(t);
             Tiles.Add(t);
 
-            tileSetter.SetUniformImage("INPUT", t.Texture, BufferAccess.Read, 1);
+            tileSetter.SetUniform("INPUT", t.Texture, BufferAccess.Read, 1);
             tileSetter.SetUniform("CLIP", t.Clip.Position);
             tileSetter.SetUniform("ERASE", false);
         }
         else tileSetter.SetUniform("ERASE", true);
 
-        tileSetter.Dispatch(Engine.Width / 16, Engine.Height / 16, 1);
+        tileSetter.Dispatch(Engine.Width / 16, Engine.Height / 16, 1, MemoryBarriers.ShaderImageAccess);
     }
 }
