@@ -195,7 +195,6 @@ public static class Engine
     /// <param name="title">The window's title</param>
     public static void Create(int width, int height, string title, bool fullscreen = false, bool borderless = false)
     {
-
         // not using the properties on purpose, as they'll resize the window, which doesn't even exist yet.
         Engine.width = width;
         Engine.height = height;
@@ -372,6 +371,7 @@ public static class Engine
         else INI.ParseInput(sections.FindSubs("Input"));
     }
 
+    public static void LoadScene(SceneGenerator scene)=> Scene.Load(scene);
     public static void LoadScene<T>() where T : SceneGenerator, new() => Scene.Load<T>();
 
     /// <summary>

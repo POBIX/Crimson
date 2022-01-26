@@ -8,9 +8,22 @@ public class Controller : Component
     public ReadOnlyCollection<ICollide> Colliders => colliders.AsReadOnly();
 
     /// <summary>
-    /// The controller's last reported velocity. (Updated with <see cref="Move"/>)
+    /// The controller's last reported velocity. (Updated with <seealso cref="Move"/>)
     /// </summary>
     public Vector2 Velocity { get; private set; }
+
+    /// <summary>
+    /// Is the controller touching the floor?
+    /// </summary>
+    public bool OnFloor { get; internal set; }
+    /// <summary>
+    /// Is the controller touching the wall?
+    /// </summary>
+    public bool OnWall { get; internal set; }
+    /// <summary>
+    /// Is the controller touching the ceiling?
+    /// </summary>
+    public bool OnCeil { get; internal set; }
 
     public override void Start()
     {
@@ -31,6 +44,7 @@ public class Controller : Component
         List<object> collisions = new();
         // list and not IEnumerable in order to avoid multiple enumeration
         List<ICollide> sceneColliders = Scene.GetComponentsOfType<ICollide>().ToList();
+        OnFloor = OnCeil = OnWall = false;
         foreach (ICollide collider in colliders)
         {
             foreach (ICollide c in sceneColliders)

@@ -16,7 +16,8 @@ public class Camera : Component
     private Vector2 virtualResolution;
 
     public float Interpolation { get; set; }
-    public float Zoom { get; set; } = 1;
+
+    public Rect Limit { get; set; } = new(-float.MaxValue, -float.MaxValue, float.MaxValue, float.MaxValue);
 
     public bool SyncToPhysics { get; set; } = true;
 
@@ -52,6 +53,8 @@ public class Camera : Component
 
     public static Vector2 CurrentOrigin => Current?.Origin ?? new();
     public static Vector2 CurrentResolution => Current?.VirtualResolution ?? Engine.Size;
+    public static int CurrentWidth => (int)CurrentResolution.x;
+    public static int CurrentHeight => (int)CurrentResolution.y;
 
     internal Vector2 scale = Vector2.One;
 
@@ -77,9 +80,16 @@ public class Camera : Component
         if (SyncToPhysics) Lerp();
     }
 
-    public void MoveTo(Vector2 position) => target = position;
+    public void MoveTo(Vector2 position)
+    {
+        target = new Vector2(
+            Mathf.Clamp(position.x - actualOffset.x, Limit.x, Limit.x + Limit.w - actualOffset.x),
+            Mathf.Clamp(position.y - actualOffset.y, Limit.y, Limit.y + Limit.h - actualOffset.y)
+        ) + actualOffset;
+    }
 
     public void Activate() => Current = this;
+    public static void Deactivate() => Current = null;
 
     public void SetOffset(Vector2 offset) => actualOffset = offset;
 
@@ -115,8 +125,10 @@ public class Camera : Component
 
     private void CalcOffset() => actualOffset = offset switch
     {
-        Offset.Center => VirtualResolution / 2,
+        Offset.Center => (VirtualResolution != Vector2.Zero ? VirtualResolution : Engine.Size) / 2,
         Offset.TopLeft => new(),
         _ => new()
     };
+
+    public Vector2 GetOffset() => actualOffset;
 }

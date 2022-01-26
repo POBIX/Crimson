@@ -2,7 +2,7 @@
 
 namespace Crimson;
 
-public class Sprite : Component
+public class Sprite : Component, IDisposable
 {
     public Texture Texture
     {
@@ -45,6 +45,8 @@ public class Sprite : Component
 
     private Rect source;
     public Rect Source => source;
+
+    public bool DisposeTexture { get; set; } = true;
 
     private int framesH = 1;
     private int framesV = 1;
@@ -178,5 +180,12 @@ public class Sprite : Component
             if (++FrameV >= FramesV)
                 FrameV = 0;
         }
+    }
+
+    public void Dispose()
+    {
+        if (DisposeTexture)
+            texture?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

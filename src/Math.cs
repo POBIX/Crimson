@@ -62,14 +62,9 @@ public struct Vector2
 
     public float Dot(Vector2 v) => x * v.x + y * v.y;
 
-    public Vector2 Rounded() => new(MathF.Round(x), MathF.Round(y));
-
-    public void Round()
-    {
-        Vector2 v = Rounded();
-        x = v.x;
-        y = v.y;
-    }
+    public Vector2 Round() => new(MathF.Round(x), MathF.Round(y));
+    public Vector2 Floor() => new(MathF.Floor(x), MathF.Floor(y));
+    public Vector2 Ceil() => new(Ceiling(x), Ceiling(y));
 
     public Vector2 Abs() => new(MathF.Abs(x), MathF.Abs(y));
 
@@ -143,6 +138,11 @@ public struct Vector2
         Vector3 d = Vector3.Forward.Cross(new(this, 0));
         return new(d.x, d.y);
     }
+
+    public float Cross(Vector2 with) => x * with.y - y * with.x;
+
+    public float Angle() => Mathf.Atan2(y, x);
+    public Vector2 Sign() => new(Mathf.Sign(x), Mathf.Sign(y));
 }
 
 public struct Rect
@@ -249,6 +249,25 @@ public static class Mathf
     public static float Min(float a, float b) => a < b ? a : b;
     public static int Max(int a, int b) => a > b ? a : b;
     public static int Min(int a, int b) => a < b ? a : b;
+    public static float Sign(float n) => n == 0 ? 0 : n > 0 ? 1 : -1;
+    public static float Clamp(float value, float min, float max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+    public static int Clamp(int value, int min, int max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+    public static float LerpAngle(float a, float b, float t)
+    {
+        float diff = (b - a) % Tau;
+        float dist = 2 * diff % Tau - diff;
+        return a + dist * t;
+    }
 }
 
 /// <summary>

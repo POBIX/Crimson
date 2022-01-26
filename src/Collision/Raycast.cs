@@ -2,9 +2,10 @@
 
 public struct RaycastHit
 {
-    public Entity collider;
+    public Entity target;
     public Vector2 point;
     public Vector2 normal;
+    public Component collider;
 }
 
 /// <summary>

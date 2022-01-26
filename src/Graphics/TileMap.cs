@@ -23,6 +23,9 @@ public struct Tile
     public TileLayer Layer { get; init; }
     public Rect Clip { get; init; }
     public BoxCollider[] Colliders { get; init; }
+    public bool FlipH { get; init; }
+    public bool FlipV { get; init; }
+    public bool FlipD { get; init; }
 }
 
 public class TileMap : Component
@@ -41,7 +44,17 @@ public class TileMap : Component
 
     public TileLayer CustomTilesLayer { get; private set; }
 
-    private ComputeShader tileSetter;
+    public IDictionary<string, string> Properties { get; private set; }
+
+    private static ComputeShader tileSetter;
+
+    static TileMap()
+    {
+        tileSetter = new();
+        tileSetter.AttachText(Resources.Read("shaders/set-tile.comp"));
+        tileSetter.SetUniform("CAM_SIZE", Camera.CurrentResolution);
+        Engine.Resize += (_, _) => tileSetter.SetUniform("CAM_SIZE", Camera.CurrentResolution);
+    }
 
     private static TmxTileset GetTileset(TmxMap map, int gid)
     {
@@ -71,18 +84,40 @@ public class TileMap : Component
         return new();
     }
 
-    private static string GetImagePath(string mapFile, string image) =>
-        Path.IsPathFullyQualified(image) ? image : Path.Combine(Path.GetDirectoryName(mapFile) ?? ".", image);
-
-    private IEnumerable<BoxCollider> GetColliders(TmxTilesetTile tile, Vector2 offset)
+    private static string GetImagePath(string mapFile, string image)
     {
+        if (Path.IsPathFullyQualified(image))
+            return image;
+        if (Path.GetDirectoryName(mapFile) == Path.GetDirectoryName(image))
+            return image;
+        return Path.Combine(Path.GetDirectoryName(mapFile) ?? ".", image);
+    }
+
+    private IEnumerable<BoxCollider> GetColliders(TmxTilesetTile tile, Vector2 offset, bool flipH, bool flipV, bool flipD)
+    {
+        if (tile == null) yield break;
+
         foreach (TmxObjectGroup group in tile.ObjectGroups)
         {
             foreach (TmxObject obj in group.Objects)
             {
                 var b = AddComponent<BoxCollider>();
-                b.Offset = offset + new Vector2((float)obj.X, (float)obj.Y);
+
                 b.Size = new Vector2((float)obj.Width, (float)obj.Height);
+                b.Offset = new((float)obj.X, (float)obj.Y);
+                if (flipD)
+                {
+                    b.Size = new(b.Size.y, b.Size.x);
+                    Vector2 v = TileSize - b.Size;
+                    // has to be multiplied by 2 in y because ??
+                    b.Offset = v * new Vector2(1, 2) - new Vector2(b.Offset.y, b.Offset.x);
+                }
+                Vector2 s = TileSize - b.Size;
+                if (flipH) b.Offset = new(s.x - b.Offset.x, b.Offset.y);
+                if (flipV) b.Offset = new(b.Offset.x, s.y - b.Offset.y);
+
+                b.Offset += offset - s / 2;
+
                 yield return b;
             }
         }
@@ -91,12 +126,17 @@ public class TileMap : Component
     public void Load(string mapFile)
     {
         map = new(mapFile);
-        TileSize = new(map.TileWidth, map.TileHeight);
-        MapSize = new(map.Width, map.Height);
+        TileSize = new Vector2(map.TileWidth, map.TileHeight);
+        MapSize = new Vector2(map.Width, map.Height);
         MapFile = mapFile;
+        Properties = map.Properties;
 
         Dictionary<int, Texture> textureCache = new();
         using Entity spriteEntity = new();
+
+        // Zoom on cameras breaks stuff pretty badly.
+        Camera prevCam = Camera.Current;
+        Camera.Deactivate();
 
         foreach (TmxLayer layer in map.Layers)
         {
@@ -128,16 +168,18 @@ public class TileMap : Component
                     textureCache.Add(tile.Gid, tex);
                 }
                 sprite.Texture = tex;
-
                 sprite.Clip = GetSourceRect(tileset, tile.Gid);
                 sprite.Offset = new(
-                    tile.X * TileSize.x + (float)(layer.OffsetX ?? 0),
-                    tile.Y * TileSize.y + (float)(layer.OffsetY ?? 0)
+                    tile.X * TileSize.x + (float)(layer.OffsetX ?? 0) + TileSize.x / 2,
+                    tile.Y * TileSize.y + (float)(layer.OffsetY ?? 0) + TileSize.y / 2
                 );
                 sprite.FlipH = tile.HorizontalFlip;
                 sprite.FlipV = tile.VerticalFlip;
+                sprite.Rotation = tile.DiagonalFlip ? -Mathf.Pi / 2 : 0;
 
-                BoxCollider[] colliders = GetColliders(tileset.Tiles[tile.Gid - 1], sprite.Offset).ToArray();
+                BoxCollider[] colliders = GetColliders(
+                    GetTile(tileset, tile.Gid), sprite.Offset, sprite.FlipH, sprite.FlipV, tile.DiagonalFlip
+                ).ToArray();
 
                 layerTiles.Add(new()
                 {
@@ -145,10 +187,14 @@ public class TileMap : Component
                     Position = new(tile.X, tile.Y),
                     WorldPosition = sprite.Offset,
                     Texture = tex,
-                    Properties = tileset.Tiles[tile.Gid - 1].Properties,
+                    Properties = tileset.Tiles.Values.FirstOrDefault(t => t.Id == tile.Gid - tileset.FirstGid)?.Properties ??
+                                 new Dictionary<string, string>(),
                     Layer = tileLayer,
                     Clip = sprite.Clip,
-                    Colliders = colliders
+                    Colliders = colliders,
+                    FlipH = tile.HorizontalFlip,
+                    FlipV = tile.VerticalFlip,
+                    FlipD = tile.DiagonalFlip
                 });
             }
             Layers.Add(tileLayer);
@@ -172,13 +218,14 @@ public class TileMap : Component
         s.Offset = Texture.Size / 2;
         s.Texture = Texture;
         s.FlipV = true;
+        s.DisposeTexture = false;
         s.Start();
 
-        tileSetter = new();
-        tileSetter.AttachText(Resources.Read("shaders/set-tile.comp"));
-        tileSetter.SetUniform("SCREEN_SIZE", Engine.Size);
-        Engine.Resize += (_, _) => tileSetter.SetUniform("SCREEN_SIZE", Engine.Size);
+        prevCam?.Activate();
     }
+
+    private static TmxTilesetTile GetTile(TmxTileset tileset, int gid) =>
+        tileset.Tiles.Values.FirstOrDefault(v => v.Id == gid - tileset.FirstGid);
 
     /// <summary>
     /// Returns the first tile at the given map coordinates, or null if tile is empty.
@@ -206,12 +253,15 @@ public class TileMap : Component
     }
 
     public Vector2 ToWorld(Vector2 mapCoords) => Position + mapCoords * TileSize;
-    public Vector2 ToMap(Vector2 worldCoords) => (worldCoords - Position) / TileSize;
+    public Vector2 ToMap(Vector2 worldCoords) => ((worldCoords - Position) / TileSize).Ceil();
+
+    private static TmxTilesetTile GetTileOrNull(TmxTileset tileset, int id) =>
+        tileset.Tiles.FirstOrDefault(t => t.Key == id - tileset.FirstGid).Value;
 
     private Tile ConstructTile(int id, Vector2 mapCoords, TileLayer layer)
     {
         TmxTileset tileset = GetTileset(map, id);
-        TmxTilesetTile tile = tileset.Tiles[id - 1];
+        TmxTilesetTile tile = GetTileOrNull(tileset, id);
         Vector2 coords = ToWorld(mapCoords);
         return new Tile
         {
@@ -220,9 +270,12 @@ public class TileMap : Component
             Position = mapCoords,
             WorldPosition = coords,
             Texture = new(GetImagePath(MapFile, tileset.Image.Source)),
-            Properties = tile.Properties,
+            Properties = tile?.Properties,
             Layer = layer,
-            Colliders = GetColliders(tile, coords).ToArray()
+            Colliders = GetColliders(tile, coords, false, false, false).ToArray(),
+            FlipH = false,
+            FlipV = false,
+            FlipD = false
         };
     }
 
@@ -238,8 +291,11 @@ public class TileMap : Component
                 RemoveComponent(c);
         }
 
-        tileSetter.SetUniform("POS", mapCoords * TileSize - TileSize / 2 * new Vector2(1, -1)); // y axis is flipped
-        tileSetter.SetUniform("SIZE", TileSize);
+        Vector2 zoom = Camera.CurrentResolution / Engine.Size;
+        Vector2 size = TileSize * zoom;
+
+        tileSetter.SetUniform("POS", mapCoords * size + new Vector2(0, size.y)); // y axis is flipped
+        tileSetter.SetUniform("SIZE", size);
         tileSetter.SetUniform("OUTPUT", Texture, BufferAccess.Write, 0);
 
         if (id != 0)

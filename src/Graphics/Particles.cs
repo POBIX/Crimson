@@ -185,6 +185,8 @@ public class ParticleEmitter : DrawableObject
         Gl.DrawArraysInstanced(PrimitiveType.Triangles, 0, 6, ParticlesNum);
     }
 
+    public override void OnDestroy() { }
+
     private int addIndex = 0;
 
     private static Random rnd = new();

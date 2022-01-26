@@ -8,6 +8,8 @@ public abstract class SceneObject
 
     public abstract void SetScene(Scene value);
 
+    public abstract void OnDestroy();
+
     public SceneObject Parent { get; set; }
     public virtual Vector2 LocalPosition { get; set; }
     public virtual Vector2 Position
@@ -15,17 +17,24 @@ public abstract class SceneObject
         get => LocalPosition + (Parent?.Position ?? Vector2.Zero);
         set => LocalPosition = value - (Parent?.Position ?? Vector2.Zero);
     }
+    public List<string> Groups { get; set; } = new();
+    public bool Paused { get; set; } = false;
 }
 
 public abstract class DrawableObject : SceneObject
 {
     public abstract Material Material { get; set; }
     public abstract void Draw();
+
+    public bool Hidden { get; set; } = false;
 }
 
 public sealed partial class Scene
 {
     private List<SceneObject> scene = new();
+    public IReadOnlyCollection<SceneObject> Objects => scene.AsReadOnly();
+
+    private Queue<(SceneObject, bool)> removalQueue = new();
 
     public bool Started { get; private set; } = false;
 
@@ -41,11 +50,21 @@ public sealed partial class Scene
     /// </summary>
     public void Start()
     {
-        // ReSharper disable once ForCanBeConvertedToForeach (collection might be modified)
+        Started = true;
+
+        // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < scene.Count; i++)
             scene[i].Start();
+    }
 
-        Started = true;
+    private void RemoveQueue()
+    {
+        while (removalQueue.Count != 0)
+        {
+            (SceneObject obj, bool disp) = removalQueue.Dequeue();
+            if (disp) DoDestroy(obj);
+            else DoDestroyNoDispose(obj);
+        }
     }
 
     /// <summary>
@@ -53,9 +72,13 @@ public sealed partial class Scene
     /// </summary>
     public void Update(float delta)
     {
-        // ReSharper disable once ForCanBeConvertedToForeach (collection might be modified)
+        RemoveQueue();
+        // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < scene.Count; i++)
-            scene[i].Update(delta);
+        {
+            if (!scene[i].Paused)
+                scene[i].Update(delta);
+        }
     }
 
     /// <summary>
@@ -63,9 +86,13 @@ public sealed partial class Scene
     /// </summary>
     public void Frame(float delta)
     {
-        // ReSharper disable once ForCanBeConvertedToForeach (collection might be modified)
+        RemoveQueue();
+        // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < scene.Count; i++)
-            scene[i].Frame(delta);
+        {
+            if (!scene[i].Paused)
+                scene[i].Frame(delta);
+        }
     }
 
     /// <summary>
@@ -73,10 +100,10 @@ public sealed partial class Scene
     /// </summary>
     public void Draw()
     {
-        // ReSharper disable once ForCanBeConvertedToForeach (collection might be modified)
+        // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < scene.Count; i++)
         {
-            if (scene[i] is DrawableObject d)
+            if (scene[i] is DrawableObject d && !d.Hidden)
             {
                 d.Material.Use();
                 d.Draw();
@@ -122,9 +149,11 @@ public sealed partial class Scene
     /// Automatically disposes IDisposables.
     /// </summary>
     /// <param name="o">The entity to destroy</param>
-    public void Destroy(SceneObject o)
+    public void Destroy(SceneObject o) => removalQueue.Enqueue((o, true));
+    private void DoDestroy(SceneObject o)
     {
-        DestroyNoDispose(o);
+        DoDestroyNoDispose(o);
+        o.OnDestroy();
         if (o is IDisposable d) d.Dispose();
     }
 
@@ -133,13 +162,19 @@ public sealed partial class Scene
     /// Does not dispose IDisposables.
     /// </summary>
     /// <param name="o">The entity to destroy</param>
-    public void DestroyNoDispose(SceneObject o)
+    public void DestroyNoDispose(SceneObject o) => removalQueue.Enqueue((o, false));
+    private void DoDestroyNoDispose(SceneObject o)
     {
         o.SetScene(null);
         scene.Remove(o);
     }
 
-    public void Reset() => scene.Clear();
+    public void Reset()
+    {
+        foreach (SceneObject obj in scene)
+            Destroy(obj);
+        scene.Clear();
+    }
 
     /// <summary>
     /// Finds an entity by name. Returns null if not found.
@@ -157,10 +192,24 @@ public sealed partial class Scene
         return null;
     }
 
-    public void Load<T>() where T : SceneGenerator, new()
+    public IEnumerable<T> GetGroup<T>(string name) where T : class
     {
-        T t = new() { Scene = this };
-        t.Start();
-        Start();
+        foreach (SceneObject obj in scene)
+        {
+            if (obj is T t && obj.Groups.Contains(name))
+                yield return t;
+        }
     }
+
+    public IEnumerable<SceneObject> GetGroup(string name) => GetGroup<SceneObject>(name);
+
+    public SceneGenerator Load(SceneGenerator scene)
+    {
+        scene.Scene = this;
+        scene.Start();
+        if (!Started) Start();
+        return scene;
+    }
+
+    public T Load<T>() where T : SceneGenerator, new() => Load(new T()) as T;
 }

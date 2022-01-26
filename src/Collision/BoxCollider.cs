@@ -16,7 +16,7 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
     public Vector2 Size { get; set; }
 
     public bool Block { get; set; } = true;
-    public CollisionLayer Layer { get; set; }
+    public CollisionLayer Layer { get; set; } = CollisionLayer.WithBit(0);
 
     private static bool GetBroadphase(Vector2 pos, Rect rect, Vector2 vel)
     {
@@ -31,8 +31,8 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
         return r.Intersects(rect);
     }
 
-    private bool IsColliding(BoxCollider source, BoxCollider target, Vector2 origin, Vector2 velocity,
-                             out BoxCollisionInfo info)
+    private static bool IsColliding(BoxCollider source, BoxCollider target, Vector2 origin, Vector2 velocity,
+                                    out BoxCollisionInfo info)
     {
         info = new() { Target = target, Entity = target.Entity };
 
@@ -40,8 +40,9 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
         if ((source.Layer & target.Layer) == 0) return false;
 
         Rect a = source.Bounds;
+        a.Position -= a.Size / 2;
         Rect b = new(target.Bounds.Position - target.Size / 2 - a.Size / 2, target.Size + a.Size);
-        if (!GetBroadphase(origin, Bounds, velocity))
+        if (!GetBroadphase(origin, b, velocity))
             return false;
         Vector2 tNear = (b.Position - origin) / velocity;
         Vector2 tFar = (b.Position + b.Size - origin) / velocity;
@@ -57,12 +58,16 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
         info.Time = MathF.Max(tNear.x, tNear.y);
         float timeFar = MathF.Min(tFar.x, tFar.y);
 
-        if (tNear.x > tNear.y)
+        if (tNear.x == tNear.y)
+            info.Normal = new(Mathf.Sign(tNear.x), Mathf.Sign(tNear.y));
+        else if (tNear.x == 0) // if we're on a wall, ignore the vertical collisions.
+            info.Normal = velocity.x < 0 ? Vector2.Right : Vector2.Left;
+        else if (tNear.y == 0) // if we're on a floor, ignore the horizontal collisions.
+            info.Normal = velocity.y < 0 ? Vector2.Down : Vector2.Up;
+        else if (tNear.x > tNear.y)
             info.Normal = velocity.x < 0 ? Vector2.Right : Vector2.Left;
         else if (tNear.x < tNear.y)
             info.Normal = velocity.y < 0 ? Vector2.Down : Vector2.Up;
-        else
-            info.Normal = Vector2.Zero;
 
         return timeFar >= 0 && info.Time >= 0 && info.Time < 1;
     }
@@ -80,10 +85,15 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
             // if multiple collisions were registered this frame, and one of them was going into a corner,
             // ignore it (or else you would get stuck on corners between blocks).
             // only one collision means you were going into a real corner, so we shouldn't let you pass.
-            if (info.Normal == Vector2.Zero && collisions.Count != 1) continue;
+            // if (info.Normal == Vector2.Zero && collisions.Count != 1) continue;
+
+            if (info.Normal.y == -1) body.OnFloor = true;
+            if (info.Normal.y == 1) body.OnCeil = true;
+            if (info.Normal.x != 0) body.OnWall = true;
 
             // stop body from actually moving into the collider
             body.Position += velocity * info.Time;
+
             float rem = 1 - info.Time;
             float dot = (velocity.x * info.Normal.y + velocity.y * info.Normal.x) * rem;
             velocity.x = dot * info.Normal.y;
@@ -101,14 +111,21 @@ public class BoxCollider : Component, ICollide<BoxCollider, BoxCollider, BoxColl
                a.y < b.y + b.h && a.y + a.h > b.y;
     }
 
-    private Entity targetEntity = new();
+    private static BoxCollider target;
+
+    static BoxCollider()
+    {
+        target = new() { Block = true, Size = Vector2.One };
+        new Entity().AddComponent(target);
+    }
+
     public bool Intersects(BoxCollider collider, Vector2 origin, Vector2 velocity, CollisionLayer layer, out RaycastHit hit)
     {
-        BoxCollider target = new() { Block = true, Offset = origin, Size = Vector2.One, Layer = layer };
-        targetEntity.AddComponent(target);
+        target.Offset = origin;
+        target.Layer = layer;
         if (IsColliding(target, collider, velocity, out BoxCollisionInfo info))
         {
-            hit = new() { collider = info.Entity, normal = info.Normal, point = origin + velocity * (info.Time) };
+            hit = new() { target = info.Entity, normal = info.Normal, point = origin + velocity * info.Time, collider = collider};
             return true;
         }
         hit = default;

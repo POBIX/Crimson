@@ -128,5 +128,6 @@ public abstract class Shader : Component, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    ~Shader() => Dispose(false);
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~Shader() => Dispose(false);
 }

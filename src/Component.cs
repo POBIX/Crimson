@@ -20,6 +20,8 @@ public class Component
 
     public bool IsValid => Entity != null && Entity.IsValid;
 
+    public bool Paused { get; set; }
+
     /// <summary>
     /// Gets called as soon as the entity is added to the scene, and before <see cref="Start"/>
     /// </summary>

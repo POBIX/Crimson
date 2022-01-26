@@ -57,5 +57,6 @@ public unsafe class ShaderBuffer<T> : IDisposable where T : unmanaged
         GC.SuppressFinalize(this);
     }
 
-    ~ShaderBuffer() => ReleaseUnmanagedResources();
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~ShaderBuffer() => ReleaseUnmanagedResources();
 }

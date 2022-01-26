@@ -32,14 +32,25 @@ public class Framebuffer : IDisposable
         );
     }
 
+    /// <summary>
+    /// Draws anything drawn inside of <paramref name="action"/>() to a texture.
+    /// NOTE: This creates a new framebuffer each time it is called. Do NOT call it every frame, create a framebuffer instead.
+    /// </summary>
     public static Texture Draw(Vector2 size, Action action)
     {
         Framebuffer prev = Active;
         Texture texture = new(size);
         using Framebuffer fbo = new();
+
         fbo.AttachTexture(texture, 0);
+        Graphics.Clear();
+        Gl.Viewport(0, 0, (int)size.x, (int)size.y);
+
         action();
-        prev.Bind();
+
+        if (prev != null) prev.Bind();
+        else BindDefault();
+
         return texture;
     }
 
@@ -54,5 +65,6 @@ public class Framebuffer : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    ~Framebuffer() => ReleaseUnmanagedResources();
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~Framebuffer() => ReleaseUnmanagedResources();
 }

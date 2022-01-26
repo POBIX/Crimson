@@ -60,5 +60,6 @@ public class ComputeShader : Shader, IDisposable
             Material?.Dispose();
     }
 
-    ~ComputeShader() => Dispose(false);
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~ComputeShader() => Dispose(false);
 }

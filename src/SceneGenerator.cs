@@ -52,4 +52,6 @@ public abstract class SceneGenerator
     }
 
     protected T Obj<T>(Action<T> obj, float x, float y) where T : SceneObject, new() => Obj(obj, new(x, y));
+
+    protected static void Group(string name) => Current.Groups.Add(name);
 }

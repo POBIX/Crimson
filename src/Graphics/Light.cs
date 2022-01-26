@@ -27,6 +27,7 @@ public class Light : SceneObject
         Scene = value;
         Scene.lights.Add(this);
     }
+    public override void OnDestroy() { }
 }
 
 public sealed partial class Scene

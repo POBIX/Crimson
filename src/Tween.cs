@@ -32,6 +32,7 @@ public class Tweener<T> : SceneObject
 
     public override void Start() { }
     public override void Update(float delta) { }
+    public override void OnDestroy() { }
     public override void Frame(float delta)
     {
         Elapsed += delta;

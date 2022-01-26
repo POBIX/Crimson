@@ -243,12 +243,12 @@ public class ImGuiController : IDisposable
 
         drawData.ScaleClipRects(io.DisplayFramebufferScale);
 
-        Gl.Enable(EnableCap.Blend);
-        Gl.Enable(EnableCap.ScissorTest);
-        Gl.BlendEquation(BlendEquationMode.FuncAdd);
-        Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        Gl.Disable(EnableCap.CullFace);
-        Gl.Disable(EnableCap.DepthTest);
+        // Gl.Enable(EnableCap.Blend);
+        // Gl.Enable(EnableCap.ScissorTest);
+        // Gl.BlendEquation(BlendEquationMode.FuncAdd);
+        // Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        // Gl.Disable(EnableCap.CullFace);
+        // Gl.Disable(EnableCap.DepthTest);
 
         // Render command lists
         for (int n = 0; n < drawData.CmdListsCount; n++)
@@ -291,8 +291,8 @@ public class ImGuiController : IDisposable
             }
         }
 
-        Gl.Disable(EnableCap.Blend);
-        Gl.Disable(EnableCap.ScissorTest);
+        // Gl.Disable(EnableCap.Blend);
+        // Gl.Disable(EnableCap.ScissorTest);
     }
 
     private void ReleaseUnmanagedResources()
@@ -310,5 +310,6 @@ public class ImGuiController : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    ~ImGuiController() => ReleaseUnmanagedResources();
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~ImGuiController() => ReleaseUnmanagedResources();
 }

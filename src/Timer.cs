@@ -65,5 +65,6 @@ public class Timer : SceneObject
     }
 
     public override void SetScene(Scene value) => Scene = value;
+    public override void OnDestroy() { }
     public override void Start() { }
 }

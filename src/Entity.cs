@@ -32,6 +32,9 @@ public sealed class Entity : DrawableObject, IDisposable
 
     public event Action<Component> ComponentAdded;
     public event Action<Component> ComponentRemoved;
+    public event Action Destroyed;
+
+    private Queue<Component> removalQueue = new();
 
     public Entity() => ID = idCounter++;
 
@@ -91,12 +94,11 @@ public sealed class Entity : DrawableObject, IDisposable
     /// </summary>
     public void RemoveComponent<T>() where T : class
     {
-        // ReSharper disable once ForCanBeConvertedToForeach (modifying collection)
-        for (int i = 0; i < components.Count; i++)
+        foreach (Component comp in components)
         {
-            if (components[i] is T)
+            if (comp is T)
             {
-                RemoveComponent(components[i]);
+                RemoveComponent(comp);
                 break;
             }
         }
@@ -106,7 +108,8 @@ public sealed class Entity : DrawableObject, IDisposable
     /// Remove a specific component from the entity.
     /// </summary>
     /// <param name="c">The component to remove</param>
-    public void RemoveComponent(Component c)
+    public void RemoveComponent(Component c) => removalQueue.Enqueue(c);
+    private void DoRemoveComponent(Component c)
     {
         components.Remove(c);
         ComponentRemoved?.Invoke(c);
@@ -118,11 +121,10 @@ public sealed class Entity : DrawableObject, IDisposable
     /// </summary>
     public void RemoveComponents<T>() where T : class
     {
-        // ReSharper disable once ForCanBeConvertedToForeach (modifying collection)
-        for (int i = 0; i < components.Count; i++)
+        foreach (Component comp in components)
         {
-            if (components[i] is T)
-                RemoveComponent(components[i]);
+            if (comp is T)
+                RemoveComponent(comp);
         }
     }
 
@@ -162,24 +164,38 @@ public sealed class Entity : DrawableObject, IDisposable
             components[i].Start();
     }
 
+    private void RemoveQueue()
+    {
+        while (removalQueue.Count != 0)
+            DoRemoveComponent(removalQueue.Dequeue());
+    }
+
     public override void Update(float delta)
     {
+        RemoveQueue();
         // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < components.Count; i++)
-            components[i].Update(delta);
+        {
+            if (!components[i].Paused)
+                components[i].Update(delta);
+        }
     }
 
     public override void Frame(float delta)
     {
+        RemoveQueue();
         // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < components.Count; i++)
-            components[i].Frame(delta);
+        {
+            if (!components[i].Paused)
+                components[i].Frame(delta);
+        }
     }
 
     public override void SetScene(Scene value)
     {
         Scene = value;
-        Awake();
+        if (value != null) Awake();
     }
 
     public override void Draw()
@@ -193,6 +209,8 @@ public sealed class Entity : DrawableObject, IDisposable
     /// Destroys the entity - stops updating and drawing it.
     /// </summary>
     public void Destroy() => Scene.Destroy(this);
+
+    public override void OnDestroy() => Destroyed?.Invoke();
 
     public static bool operator ==(Entity a, Entity b)
     {
@@ -218,5 +236,11 @@ public sealed class Entity : DrawableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    ~Entity() => Dispose();
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~Entity() => Dispose();
+    ~Entity()
+    {
+        Console.WriteLine($"Entity {Name} was finalized. This causes a memory leak." +
+                          " Call Destroy() or Dispose() when you're done using it.");
+    }
 }

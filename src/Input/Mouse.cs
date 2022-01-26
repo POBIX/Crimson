@@ -20,25 +20,23 @@ public class Mouse : ScancodeBase<MouseButton>
     private static readonly MouseButtonCallback Callback = InputCallback;
     private static readonly MouseCallback ScrollCallback = ScrollInputCallback;
 
-    private static double x, y;
-
     /// <summary> The mouse's X position relative to the camera. </summary>
-    public static float X => (float)x + Camera.Current?.Origin.x ?? GlobalX;
+    public static float X => Position.x;
 
     /// <summary> The mouse's Y position relative to the camera. </summary>
-    public static float Y => (float)y + Camera.Current?.Origin.y ?? GlobalY;
+    public static float Y => Position.y;
 
     /// <summary> The mouse's position relative to the camera. </summary>
-    public static Vector2 Position => new(X, Y);
+    public static Vector2 Position { get; private set; }
 
     /// <summary> The mouse's X position relative to the window. </summary>
-    public static float GlobalX => (float)x;
+    public static float GlobalX => GlobalPosition.x;
 
     /// <summary> The mouse's Y position relative to the window. </summary>
-    public static float GlobalY => (float)y;
+    public static float GlobalY => GlobalPosition.x;
 
     /// <summary> The mouse's position relative to the window. </summary>
-    public static Vector2 GlobalPosition => new(GlobalX, GlobalY);
+    public static Vector2 GlobalPosition { get; private set; }
 
     private class ScrollState
     {
@@ -78,7 +76,9 @@ public class Mouse : ScancodeBase<MouseButton>
     protected internal override void Update()
     {
         base.Update();
-        Glfw.GetCursorPosition(Engine.handle, out x, out y);
+        Glfw.GetCursorPosition(Engine.handle, out double x, out double y);
+        GlobalPosition = new((float)x, (float)y);
+        Position = Camera.CurrentOrigin + GlobalPosition / Engine.Size * Camera.CurrentResolution;
         scroll.Update();
     }
 

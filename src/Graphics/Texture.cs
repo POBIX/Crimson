@@ -21,6 +21,8 @@ public class Texture : IDisposable
     public int Width => (int)Size.x;
     public int Height => (int)Size.y;
 
+    private string file;
+
     /// <summary>
     /// Loads raw data into the texture.
     /// </summary>
@@ -43,11 +45,11 @@ public class Texture : IDisposable
         BindObject();
         Gl.TexParameter(
             TextureTarget.Texture2d, TextureParameterName.TextureMinFilter,
-            filter ? (int)TextureMinFilter.Nearest : (int)TextureMinFilter.Linear
+            filter ? (int)TextureMinFilter.Linear : (int)TextureMinFilter.Nearest
         );
         Gl.TexParameter(
             TextureTarget.Texture2d, TextureParameterName.TextureMagFilter,
-            filter ? (int)TextureMagFilter.Nearest : (int)TextureMagFilter.Linear
+            filter ? (int)TextureMagFilter.Linear : (int)TextureMagFilter.Nearest
         );
     }
 
@@ -57,6 +59,7 @@ public class Texture : IDisposable
     /// <param name="filePath">The path to the image.</param>
     public Texture(string filePath, bool filter = false)
     {
+        file = filePath;
         id = Gl.GenTexture();
 
         using Bitmap bmp = new(filePath);
@@ -65,14 +68,14 @@ public class Texture : IDisposable
             new(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, DrawingFormat.Format32bppArgb
         );
 
-        SetData(data.Scan0);
+        Size = new Vector2(bmp.Width, bmp.Height);
+
         SetFilter(filter);
+        SetData(data.Scan0);
 
         Gl.GenerateMipmap(TextureTarget.Texture2d);
 
         bmp.UnlockBits(data);
-
-        Size = new Vector2(bmp.Width, bmp.Height);
     }
 
 
@@ -135,8 +138,11 @@ public class Texture : IDisposable
         return output;
     }
 
-    private void ReleaseUnmanagedResources() =>
-        Gl.DeleteTextures(id);
+    private void ReleaseUnmanagedResources()
+    {
+        uint[] arr = { id }; // crash without explicitly creating array.
+        Gl.DeleteTextures(arr);
+    }
 
     public void Dispose()
     {
@@ -144,5 +150,6 @@ public class Texture : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    ~Texture() => ReleaseUnmanagedResources();
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~Texture() => ReleaseUnmanagedResources();
 }

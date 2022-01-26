@@ -172,7 +172,8 @@ public class Material : Shader, IDisposable
     {
         foreach (uint shader in shaders.Values)
             Gl.DeleteShader(shader);
-        Gl.DeleteVertexArrays(vao);
+        uint[] arr = { vao }; // crash without explicitly creating array.
+        Gl.DeleteVertexArrays(arr);
         Gl.DeleteBuffers(vbo);
     }
 
@@ -182,5 +183,6 @@ public class Material : Shader, IDisposable
         ReleaseUnmanagedResources();
     }
 
-    ~Material() => ReleaseUnmanagedResources();
+    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
+    // ~Material() => ReleaseUnmanagedResources();
 }

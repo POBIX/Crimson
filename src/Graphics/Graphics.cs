@@ -245,14 +245,14 @@ public static class Graphics
     public static void DrawPoint(float x, float y, Color color) =>
         DrawPoint(new(x, y), color);
 
-    public static void FillRect(Rect rect, Color color) =>
-        DrawOrQueue(new(color, rect.Position, 0, rect.Size, PrimitiveType.Triangles, RectFillIndex, RectFillLength));
+    public static void FillRect(Rect rect, Color color, float angle = 0) =>
+        DrawOrQueue(new(color, rect.Position, angle, rect.Size, PrimitiveType.Triangles, RectFillIndex, RectFillLength));
 
-    public static void FillRect(Vector2 pos, Vector2 size, Color color) =>
-        FillRect(new(pos, size), color);
+    public static void FillRect(Vector2 pos, Vector2 size, Color color, float angle = 0) =>
+        FillRect(new(pos, size), color, angle);
 
-    public static void FillRect(float x, float y, float w, float h, Color color) =>
-        FillRect(new(x, y, w, h), color);
+    public static void FillRect(float x, float y, float w, float h, Color color, float angle = 0) =>
+        FillRect(new(x, y, w, h), color, angle);
 
     public static void DrawRect(Rect rect, Color color) =>
         DrawOrQueue(new(color, rect.Position, 0, rect.Size, PrimitiveType.LineLoop, RectOutlineIndex, RectOutlineLength));

@@ -11,7 +11,7 @@ layout (rgba32f) uniform readonly image2D INPUT;
 uniform vec2 CLIP;
 uniform bool ERASE;
 
-uniform vec2 SCREEN_SIZE;
+uniform vec2 CAM_SIZE;
 
 bool contains(vec4 rect, ivec2 point)
 {
@@ -22,7 +22,7 @@ bool contains(vec4 rect, ivec2 point)
 void main()
 {
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 pos = ivec2(POS.x, SCREEN_SIZE.y - POS.y);
+    ivec2 pos = ivec2(POS.x, CAM_SIZE.y - POS.y);
     if (!contains(vec4(pos, SIZE), id)) return;
 
     if (!ERASE)
