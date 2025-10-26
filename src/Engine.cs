@@ -3,6 +3,7 @@ using Crimson;
 using GLFW;
 using ImGuiNET;
 using OpenGL;
+using ErrorCode = OpenGL.ErrorCode;
 using Monitor = GLFW.Monitor;
 
 namespace Crimson;
@@ -216,6 +217,8 @@ public static class Engine
 
         Glfw.MakeContextCurrent(handle);
 
+        Gl.BindAPI();
+
         Glfw.SetCloseCallback(handle, _ => Quit());
         Glfw.SetWindowSizeCallback(handle, resizeCallback);
 
@@ -229,9 +232,14 @@ public static class Engine
         AudioPlayer.Init();
         Graphics.Init();
         Scene.InitTweens();
+
         GUI = new();
         Glfw.SetCharCallback(handle, (_, point) => GUI.PressChar((char)point));
         Glfw.SetScrollCallback(handle, (_, x, y) => ImGuiController.MouseScroll(new((float)x, (float)y)));
+
+        Glfw.SetErrorCallback((code, message) => Console.WriteLine($"GLFW ERROR {code}: {message}"));
+        Gl.Enable((EnableCap)Gl.DEBUG_OUTPUT);
+        Gl.DebugMessageCallback(glErrorCallback, IntPtr.Zero);
 
         currFrame = (float)Glfw.Time;
 
@@ -240,6 +248,17 @@ public static class Engine
         Running = true;
 
         Glfw.SetWindowTitle(handle, title);
+    }
+
+    // this field exists because of a "A callback was made on a garbage collected delegate" error.
+    private static Gl.DebugProc glErrorCallback = OnGLError;
+
+    private static unsafe void OnGLError(DebugSource source, DebugType type, uint id, DebugSeverity severity, int length,
+                                         IntPtr message, IntPtr _)
+    {
+        if (severity == DebugSeverity.DebugSeverityNotification) return;
+        string msg = new((sbyte*)message, 0, length);
+        Console.WriteLine($"OpenGL ERROR {id}: {msg}\nSOURCE: {source} TYPE: {type} SEVERITY: {severity}");
     }
 
     public static void Create(string settingsPath)
@@ -337,6 +356,7 @@ public static class Engine
         GUI.Update(FrameTime);
         SimpleUpdate();
         BeginDraw();
+        DoDraw();
         GUI.Render();
         EndDraw();
     }
@@ -348,11 +368,15 @@ public static class Engine
         Graphics.Clear();
     }
 
-    public static void EndDraw()
+    public static void DoDraw()
     {
         Scene.Draw();
         Graphics.Draw();
         Graphics.RenderToScreen();
+    }
+
+    public static void EndDraw()
+    {
         Drawing = false;
         Glfw.SwapBuffers(handle);
     }
@@ -371,7 +395,7 @@ public static class Engine
         else INI.ParseInput(sections.FindSubs("Input"));
     }
 
-    public static void LoadScene(SceneGenerator scene)=> Scene.Load(scene);
+    public static void LoadScene(SceneGenerator scene) => Scene.Load(scene);
     public static void LoadScene<T>() where T : SceneGenerator, new() => Scene.Load<T>();
 
     /// <summary>

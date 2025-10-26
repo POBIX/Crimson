@@ -28,7 +28,7 @@ public class Framebuffer : IDisposable
         Bind();
         Gl.FramebufferTexture2D(
             FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0 + attachment,
-            TextureTarget.Texture2d, texture.id, 0
+            TextureTarget.Texture2d, texture.GLId, 0
         );
     }
 

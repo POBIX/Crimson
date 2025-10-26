@@ -153,7 +153,6 @@ public sealed partial class Scene
     private void DoDestroy(SceneObject o)
     {
         DoDestroyNoDispose(o);
-        o.OnDestroy();
         if (o is IDisposable d) d.Dispose();
     }
 
@@ -165,15 +164,23 @@ public sealed partial class Scene
     public void DestroyNoDispose(SceneObject o) => removalQueue.Enqueue((o, false));
     private void DoDestroyNoDispose(SceneObject o)
     {
+        o.OnDestroy();
         o.SetScene(null);
         scene.Remove(o);
     }
 
-    public void Reset()
+    /// <summary>
+    /// Clears the scene - destroys all objects
+    /// </summary>
+    public void Clear()
     {
         foreach (SceneObject obj in scene)
             Destroy(obj);
+
         scene.Clear();
+        removalQueue.Clear();
+
+        Started = false;
     }
 
     /// <summary>

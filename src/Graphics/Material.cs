@@ -17,7 +17,7 @@ public class Material : Shader, IDisposable
     internal uint vao;
     internal uint vbo;
 
-    private Dictionary<ShaderType, uint> shaders = new();
+    internal Dictionary<ShaderType, uint> shaders = new();
 
     /// <summary> The material currently being used. </summary>
     public static Material Current { get; private set; }
@@ -55,6 +55,7 @@ public class Material : Shader, IDisposable
     {
         Gl.AttachShader(program, shader);
         PrintShaderLog(shader);
+        IsEmpty = false;
     }
 
     /// <summary>
@@ -86,7 +87,7 @@ public class Material : Shader, IDisposable
     /// </summary>
     public void Use()
     {
-        if (Current != this)
+        if (Current != this && !IsEmpty)
         {
             Gl.UseProgram(program);
             Current = this;

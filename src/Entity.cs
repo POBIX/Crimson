@@ -238,9 +238,6 @@ public sealed class Entity : DrawableObject, IDisposable
 
     // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
     // ~Entity() => Dispose();
-    ~Entity()
-    {
-        Console.WriteLine($"Entity {Name} was finalized. This causes a memory leak." +
-                          " Call Destroy() or Dispose() when you're done using it.");
-    }
+    ~Entity() =>
+        Console.WriteLine($"Entity '{Name}' was finalized. This causes a memory leak. Call Destroy() on unused entities.");
 }

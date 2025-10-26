@@ -102,6 +102,8 @@ public class Camera : Component
     public static Matrix GetTransform(Vector2 position, float rotation, Vector2 size) =>
         Ortho * CurrentTransform * Matrix.Transformation(position, rotation, size);
 
+    public static Vector2 TransformPoint(Vector2 world) => CurrentOrigin + world / Engine.Size * CurrentResolution;
+
     private void CalcSize()
     {
         float aspect = VirtualResolution.x / VirtualResolution.y;

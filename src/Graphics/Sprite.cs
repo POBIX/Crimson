@@ -10,8 +10,11 @@ public class Sprite : Component, IDisposable
         set
         {
             texture = value;
-            source = new Rect(new(), texture.Size);
-            Clip = new Rect(new(), texture.Size);
+            if (Texture != null)
+            {
+                source = new Rect(new(), texture.Size);
+                Clip = new Rect(new(), texture.Size);
+            }
         }
     }
 

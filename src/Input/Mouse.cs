@@ -33,7 +33,7 @@ public class Mouse : ScancodeBase<MouseButton>
     public static float GlobalX => GlobalPosition.x;
 
     /// <summary> The mouse's Y position relative to the window. </summary>
-    public static float GlobalY => GlobalPosition.x;
+    public static float GlobalY => GlobalPosition.y;
 
     /// <summary> The mouse's position relative to the window. </summary>
     public static Vector2 GlobalPosition { get; private set; }
@@ -78,7 +78,7 @@ public class Mouse : ScancodeBase<MouseButton>
         base.Update();
         Glfw.GetCursorPosition(Engine.handle, out double x, out double y);
         GlobalPosition = new((float)x, (float)y);
-        Position = Camera.CurrentOrigin + GlobalPosition / Engine.Size * Camera.CurrentResolution;
+        Position = Camera.TransformPoint(GlobalPosition);
         scroll.Update();
     }
 

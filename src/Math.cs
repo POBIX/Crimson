@@ -143,6 +143,9 @@ public struct Vector2
 
     public float Angle() => Mathf.Atan2(y, x);
     public Vector2 Sign() => new(Mathf.Sign(x), Mathf.Sign(y));
+
+    public static implicit operator System.Numerics.Vector2(Vector2 v) => new(v.x, v.y);
+    public static implicit operator Vector2(System.Numerics.Vector2 v) => new(v.X, v.Y);
 }
 
 public struct Rect

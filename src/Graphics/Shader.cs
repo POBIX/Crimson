@@ -17,12 +17,15 @@ public abstract class Shader : Component, IDisposable
     /// <summary> The time elapsed since the Material was created. </summary>
     public float Time { get; private set; }
 
+    public bool IsEmpty { get; protected set; } = true;
+
     protected internal uint program;
 
     static Shader()
     {
         RegisterUniformSetter((uint p, int l, in int v) => Gl.ProgramUniform1(p, l, v));
         RegisterUniformSetter((uint p, int l, in float v) => Gl.ProgramUniform1(p, l, v));
+        RegisterUniformSetter((uint p, int l, in double v) => Gl.ProgramUniform1(p, l, v));
         RegisterUniformSetter((uint p, int l, in uint v) => Gl.ProgramUniform1(p, l, v));
         RegisterUniformSetter((uint p, int l, in bool v) => Gl.ProgramUniform1(p, l, v ? 1 : 0));
         RegisterUniformSetter((uint p, int l, in Vector2 v) => Gl.ProgramUniform2(p, l, v.x, v.y));
@@ -104,6 +107,7 @@ public abstract class Shader : Component, IDisposable
     /// </summary>
     public void UpdateUniforms()
     {
+        if (IsEmpty) return;
         Time += Engine.FrameTime;
         SetUniform("TIME", Time);
         SetUniform("CAM_SIZE", Camera.CurrentResolution);
