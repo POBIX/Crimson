@@ -26,6 +26,8 @@ public class ImGuiController : IDisposable
 
     private NVector2 scaleFactor = NVector2.One;
 
+    private Dictionary<string, string> fonts = new();
+
     /// <summary>
     /// Constructs a new ImGuiController.
     /// </summary>
@@ -62,9 +64,7 @@ public class ImGuiController : IDisposable
         RecreateFontDeviceTexture();
 
         shader = new();
-        shader.AttachShaderText(ShaderType.Fragment, Resources.Read("shaders/text.frag"));
-        shader.AttachShaderText(ShaderType.Vertex, Resources.Read("shaders/text.vert"));
-        shader.Link();
+        shader.InitShaderText(Resources.Read("shaders/imtext.vert"), Resources.Read("shaders/imtext.frag"));
 
         Gl.VertexArrayVertexBuffer(vertexArray, 0, vertexBuffer, IntPtr.Zero, Unsafe.SizeOf<ImDrawVert>());
         Gl.VertexArrayElementBuffer(vertexArray, indexBuffer);
@@ -95,7 +95,7 @@ public class ImGuiController : IDisposable
         fontTexture = new(width, height, filter: true);
         fontTexture.SetData(pixels);
 
-        io.Fonts.SetTexID((IntPtr)fontTexture.id);
+        io.Fonts.SetTexID((IntPtr)fontTexture.GLId);
 
         io.Fonts.ClearTexData();
     }
@@ -154,7 +154,7 @@ public class ImGuiController : IDisposable
         io.MouseDown[1] = Mouse.IsDown(MouseButton.Right);
         io.MouseDown[2] = Mouse.IsDown(MouseButton.Middle);
 
-        io.MousePos = new(Mouse.X, Mouse.Y);
+        io.MousePos = new(Mouse.GlobalX, Mouse.GlobalY);
 
         foreach (Key key in possibleKeys)
         {
@@ -294,6 +294,9 @@ public class ImGuiController : IDisposable
         // Gl.Disable(EnableCap.Blend);
         // Gl.Disable(EnableCap.ScissorTest);
     }
+
+    public void RegisterFont(string name, string path) => fonts.Add(name, path);
+    public string GetFontPath(string name) => fonts[name];
 
     private void ReleaseUnmanagedResources()
     {
