@@ -38,7 +38,7 @@ public class Font : IDisposable
         face.SetPixelSizes(0, (uint)size);
         lineHeight = face.Size.Metrics.Height.Value;
 
-        Gl.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
+        Gl.PixelStorei(PixelStoreParameter.UnpackAlignment, 1);
 
         // load first 128 ASCII characters.
         for (uint c = 0; c < 16384; c++)
@@ -54,7 +54,7 @@ public class Font : IDisposable
             ));
         }
 
-        Gl.PixelStore(PixelStoreParameter.UnpackAlignment, 4);
+        Gl.PixelStorei(PixelStoreParameter.UnpackAlignment, 4);
     }
 
     public Character this[char c] => characters[c];

@@ -213,11 +213,9 @@ public static class Engine
         );
         Glfw.SwapBuffers(handle); // prevent screen from being white during initialization (black instead; eyes happy)
 
-        Gl.Initialize();
-
         Glfw.MakeContextCurrent(handle);
 
-        Gl.BindAPI();
+        Gl.LoadFunctions(Glfw.GetProcAddress);
 
         Glfw.SetCloseCallback(handle, _ => Quit());
         Glfw.SetWindowSizeCallback(handle, resizeCallback);
@@ -238,7 +236,7 @@ public static class Engine
         Glfw.SetScrollCallback(handle, (_, x, y) => ImGuiController.MouseScroll(new((float)x, (float)y)));
 
         Glfw.SetErrorCallback((code, message) => Console.WriteLine($"GLFW ERROR {code}: {message}"));
-        Gl.Enable((EnableCap)Gl.DEBUG_OUTPUT);
+        Gl.Enable(EnableCap.DebugOutput);
         Gl.DebugMessageCallback(glErrorCallback, IntPtr.Zero);
 
         currFrame = (float)Glfw.Time;
@@ -251,7 +249,7 @@ public static class Engine
     }
 
     // this field exists because of a "A callback was made on a garbage collected delegate" error.
-    private static Gl.DebugProc glErrorCallback = OnGLError;
+    private static Gl.DebugProcDelegate glErrorCallback = OnGLError;
 
     private static unsafe void OnGLError(DebugSource source, DebugType type, uint id, DebugSeverity severity, int length,
                                          IntPtr message, IntPtr _)

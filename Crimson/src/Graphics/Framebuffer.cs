@@ -9,7 +9,7 @@ public class Framebuffer : IDisposable
 
     public static Framebuffer Active { get; private set; }
 
-    public Framebuffer() => id = Gl.GenFramebuffer();
+    public Framebuffer() => id = Gl.CreateFramebuffer();
 
     public void Bind()
     {
@@ -57,7 +57,7 @@ public class Framebuffer : IDisposable
     public static Texture Draw(int width, int height, Action action) => Draw(new(width, height), action);
 
     private void ReleaseUnmanagedResources() =>
-        Gl.DeleteFramebuffers(id);
+        Gl.DeleteFramebuffers(1, [id]);
 
     public void Dispose()
     {

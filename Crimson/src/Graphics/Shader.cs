@@ -23,15 +23,15 @@ public abstract class Shader : Component, IDisposable
 
     static Shader()
     {
-        RegisterUniformSetter((uint p, int l, in int v) => Gl.ProgramUniform1(p, l, v));
-        RegisterUniformSetter((uint p, int l, in float v) => Gl.ProgramUniform1(p, l, v));
-        RegisterUniformSetter((uint p, int l, in double v) => Gl.ProgramUniform1(p, l, v));
-        RegisterUniformSetter((uint p, int l, in uint v) => Gl.ProgramUniform1(p, l, v));
-        RegisterUniformSetter((uint p, int l, in bool v) => Gl.ProgramUniform1(p, l, v ? 1 : 0));
-        RegisterUniformSetter((uint p, int l, in Vector2 v) => Gl.ProgramUniform2(p, l, v.x, v.y));
-        RegisterUniformSetter((uint p, int l, in Vector3 v) => Gl.ProgramUniform3(p, l, v.x, v.y, v.z));
-        RegisterUniformSetter((uint p, int l, in Vector4 v) => Gl.ProgramUniform4(p, l, v.x, v.y, v.z, v.w));
-        RegisterUniformSetter((uint p, int l, in Color v) => Gl.ProgramUniform4(p, l, v.r, v.g, v.b, v.a));
+        RegisterUniformSetter((uint p, int l, in int v) => Gl.ProgramUniform1i(p, l, v));
+        RegisterUniformSetter((uint p, int l, in float v) => Gl.ProgramUniform1f(p, l, v));
+        RegisterUniformSetter((uint p, int l, in double v) => Gl.ProgramUniform1d(p, l, v));
+        RegisterUniformSetter((uint p, int l, in uint v) => Gl.ProgramUniform1ui(p, l, v));
+        RegisterUniformSetter((uint p, int l, in bool v) => Gl.ProgramUniform1i(p, l, v ? 1 : 0));
+        RegisterUniformSetter((uint p, int l, in Vector2 v) => Gl.ProgramUniform2f(p, l, v.x, v.y));
+        RegisterUniformSetter((uint p, int l, in Vector3 v) => Gl.ProgramUniform3f(p, l, v.x, v.y, v.z));
+        RegisterUniformSetter((uint p, int l, in Vector4 v) => Gl.ProgramUniform4f(p, l, v.x, v.y, v.z, v.w));
+        RegisterUniformSetter((uint p, int l, in Color v) => Gl.ProgramUniform4f(p, l, v.r, v.g, v.b, v.a));
     }
 
     protected Shader() => program = Gl.CreateProgram();
@@ -76,11 +76,11 @@ public abstract class Shader : Component, IDisposable
     }
 
     public void SetUniform(string name, Matrix2 value, bool transpose) =>
-        Gl.ProgramUniformMatrix2(program, GetUniformLocation(name), transpose, value.ToArray());
+        Gl.ProgramUniformMatrix2fv(program, GetUniformLocation(name), 1, transpose, value.ToArray());
     public void SetUniform(string name, Matrix3 value, bool transpose) =>
-        Gl.ProgramUniformMatrix3(program, GetUniformLocation(name), transpose, value.ToArray());
+        Gl.ProgramUniformMatrix3fv(program, GetUniformLocation(name), 1, transpose, value.ToArray());
     public void SetUniform(string name, Matrix value, bool transpose) =>
-        Gl.ProgramUniformMatrix4(program, GetUniformLocation(name), transpose, value.ToArray());
+        Gl.ProgramUniformMatrix4fv(program, GetUniformLocation(name), 1, transpose, value.ToArray());
 
     /// <summary>
     /// Binds as texture (sampler2D)

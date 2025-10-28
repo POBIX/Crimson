@@ -1,6 +1,10 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crimson", "Crimson.csproj", "{1D4B1623-0D3D-4001-B9DD-E9B24851E680}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crimson", "Crimson/Crimson.csproj", "{1D4B1623-0D3D-4001-B9DD-E9B24851E680}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stuff", "Stuff\Stuff.csproj", "{853F06D0-B95B-47E3-A3BF-5902FB215315}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenGLSharp", "OpenGLSharp\OpenGLSharp.csproj", "{8F02D5CC-50DE-4219-9CF3-D856F3570EB7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +16,17 @@ Global
 		{1D4B1623-0D3D-4001-B9DD-E9B24851E680}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1D4B1623-0D3D-4001-B9DD-E9B24851E680}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1D4B1623-0D3D-4001-B9DD-E9B24851E680}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AF3893E-D8F3-4A67-90A0-AE37BF760FAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AF3893E-D8F3-4A67-90A0-AE37BF760FAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AF3893E-D8F3-4A67-90A0-AE37BF760FAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AF3893E-D8F3-4A67-90A0-AE37BF760FAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{853F06D0-B95B-47E3-A3BF-5902FB215315}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{853F06D0-B95B-47E3-A3BF-5902FB215315}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{853F06D0-B95B-47E3-A3BF-5902FB215315}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{853F06D0-B95B-47E3-A3BF-5902FB215315}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F02D5CC-50DE-4219-9CF3-D856F3570EB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F02D5CC-50DE-4219-9CF3-D856F3570EB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F02D5CC-50DE-4219-9CF3-D856F3570EB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F02D5CC-50DE-4219-9CF3-D856F3570EB7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

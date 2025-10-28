@@ -58,8 +58,8 @@ public class ImGuiController : IDisposable
 
         vertexBuffer = Gl.CreateBuffer();
         indexBuffer = Gl.CreateBuffer();
-        Gl.NamedBufferData(vertexBuffer, (uint)vertexBufferSize, IntPtr.Zero, BufferUsage.DynamicDraw);
-        Gl.NamedBufferData(indexBuffer, (uint)indexBufferSize, IntPtr.Zero, BufferUsage.DynamicDraw);
+        Gl.NamedBufferData(vertexBuffer, vertexBufferSize, IntPtr.Zero, VertexBufferObjectUsage.DynamicDraw);
+        Gl.NamedBufferData(indexBuffer, indexBufferSize, IntPtr.Zero, VertexBufferObjectUsage.DynamicDraw);
 
         RecreateFontDeviceTexture();
 
@@ -218,7 +218,7 @@ public class ImGuiController : IDisposable
             if (vertexSize > vertexBufferSize)
             {
                 int newSize = (int)Math.Max(vertexBufferSize * 1.5f, vertexSize);
-                Gl.NamedBufferData(vertexBuffer, (uint)newSize, IntPtr.Zero, BufferUsage.DynamicDraw);
+                Gl.NamedBufferData(vertexBuffer, newSize, IntPtr.Zero, VertexBufferObjectUsage.DynamicDraw);
                 vertexBufferSize = newSize;
             }
 
@@ -226,7 +226,7 @@ public class ImGuiController : IDisposable
             if (indexSize > indexBufferSize)
             {
                 int newSize = (int)Math.Max(indexBufferSize * 1.5f, indexSize);
-                Gl.NamedBufferData(indexBuffer, (uint)newSize, IntPtr.Zero, BufferUsage.DynamicDraw);
+                Gl.NamedBufferData(indexBuffer, newSize, IntPtr.Zero, VertexBufferObjectUsage.DynamicDraw);
                 indexBufferSize = newSize;
             }
         }
@@ -256,9 +256,9 @@ public class ImGuiController : IDisposable
             ImDrawListPtr cmdList = drawData.CmdListsRange[n];
 
             Gl.NamedBufferSubData(vertexBuffer, IntPtr.Zero,
-                (uint)(cmdList.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>()), cmdList.VtxBuffer.Data);
+                cmdList.VtxBuffer.Size * Unsafe.SizeOf<ImDrawVert>(), cmdList.VtxBuffer.Data);
 
-            Gl.NamedBufferSubData(indexBuffer, IntPtr.Zero, (uint)(cmdList.IdxBuffer.Size * sizeof(ushort)),
+            Gl.NamedBufferSubData(indexBuffer, IntPtr.Zero, cmdList.IdxBuffer.Size * sizeof(ushort),
                 cmdList.IdxBuffer.Data);
 
             int idxOffset = 0;
@@ -279,7 +279,7 @@ public class ImGuiController : IDisposable
                 if ((io.BackendFlags & ImGuiBackendFlags.RendererHasVtxOffset) != 0)
                     Gl.DrawElementsBaseVertex(
                         PrimitiveType.Triangles, (int)pcmd.ElemCount,
-                        DrawElementsType.UnsignedShort, (IntPtr)(idxOffset * sizeof(ushort)), 0
+                        DrawElementsType.UnsignedShort, idxOffset * sizeof(ushort), 0
                     );
                 else
                     Gl.DrawElements(

@@ -66,7 +66,7 @@ public class Material : Shader, IDisposable
     public void AttachShaderText(ShaderType type, string text)
     {
         uint shader = Gl.CreateShader((GLType)type);
-        Gl.ShaderSource(shader, new[] {text});
+        Gl.ShaderSource(shader, text);
         Gl.CompileShader(shader);
 
         Attach(shader);
@@ -109,7 +109,7 @@ public class Material : Shader, IDisposable
     /// </summary>
     public bool IsShaderSet(ShaderType type) => shaders.ContainsKey(type);
 
-    public void BindVBO() => Gl.BindBuffer(BufferTarget.ArrayBuffer, vbo);
+    public void BindVBO() => Gl.BindBuffer(BufferTargetARB.ArrayBuffer, vbo);
 
     /// <summary>
     /// Feeds the vertices into the VBO.
@@ -117,12 +117,7 @@ public class Material : Shader, IDisposable
     internal void FeedBuffer(float[] vertices)
     {
         BindVBO();
-        Gl.BufferData(
-            BufferTarget.ArrayBuffer,
-            (uint)vertices.Length * sizeof(float),
-            vertices,
-            BufferUsage.StaticDraw
-        );
+        Gl.BufferData(BufferTargetARB.ArrayBuffer, vertices, BufferUsageARB.StaticDraw);
     }
 
     public void BindVAO() => Gl.BindVertexArray(vao);
@@ -138,7 +133,7 @@ public class Material : Shader, IDisposable
     public void VertexAttribPointer(string name, IntPtr ptr, int stride) => VertexAttribPointer(name, ptr, stride, out _);
 
     public static void VertexAttribPointer(uint location, IntPtr ptr, int stride) =>
-        Gl.VertexAttribPointer(location, 2, VertexAttribType.Float, false, stride * sizeof(float), ptr);
+        Gl.VertexAttribPointer(location, 2, VertexAttribPointerType.Float, false, stride * sizeof(float), ptr);
 
     /// <summary>
     /// Attaches <paramref name="fragPath"/> and <paramref name="vertPath"/> only if there is no shader already attached.
@@ -173,9 +168,8 @@ public class Material : Shader, IDisposable
     {
         foreach (uint shader in shaders.Values)
             Gl.DeleteShader(shader);
-        uint[] arr = { vao }; // crash without explicitly creating array.
-        Gl.DeleteVertexArrays(arr);
-        Gl.DeleteBuffers(vbo);
+        Gl.DeleteVertexArrays(1, [vao]);
+        Gl.DeleteBuffers(1, [vbo]);
     }
 
     protected override void Dispose(bool disposing)

@@ -35,7 +35,7 @@ public class ComputeShader : Shader, IDisposable
     public void AttachText(string text)
     {
         uint shader = Gl.CreateShader(GLType.ComputeShader);
-        Gl.ShaderSource(shader, new[] { text });
+        Gl.ShaderSource(shader, text);
         Gl.CompileShader(shader);
         PrintShaderLog(shader);
 

@@ -1,0 +1,94 @@
+﻿#version 460 core
+
+layout (local_size_x = 8) in;
+
+uniform float DELTA;
+uniform int PROGRAM;
+layout (rgba32f) uniform image2D TEXTURE;
+
+#define ID gl_GlobalInvocationID
+
+struct Particle
+{
+    vec4 color;
+    vec2 gravity;
+    vec2 velocity;
+    vec2 position;
+    vec2 initialPos;
+    vec2 size;
+    float lifetime;
+    float elapsed;
+    float delay;
+    float rotation;
+    bool visible;
+};
+
+layout (std430, binding = 4) buffer particlesSSBO
+{
+    Particle particles[];
+};
+
+void destroy(inout Particle p)
+{
+    p.elapsed = p.delay;
+    p.velocity = vec2(0);
+    p.position = p.initialPos;
+    p.visible = true;
+}
+
+void update(inout Particle p, float delta)
+{
+    p.elapsed += delta;
+    if (p.elapsed >= p.lifetime)
+    {
+        destroy(p);
+        return;
+    }
+    if (!p.visible) return;
+
+    p.velocity += p.gravity;
+    p.position += p.velocity * delta;
+}
+
+void preprocess(inout Particle p)
+{
+    const float step = 0.1; // number of seconds to process at once
+    for (float i = step; i < DELTA; i += step)
+        update(p, step);
+    float rem = mod(DELTA, step);
+    if (rem != 0) update(p, rem); // update the remainder left after batching.
+}
+
+void draw(Particle p)
+{
+    if (!p.visible) return;
+
+    float c = cos(p.rotation);
+    float s = sin(p.rotation);
+    mat2 rot = mat2(c, -s, s, c);
+
+    for (int x = 0; x < p.size.x; x++)
+    {
+        for (int y = 0; y < p.size.y; y++)
+        {
+            ivec2 s = ivec2(p.position + rot * vec2(x, y));
+            imageStore(TEXTURE, s, p.color);
+        }
+    }
+}
+
+void main()
+{
+    switch (PROGRAM)
+    {
+        case 0:
+            update(particles[ID.x], DELTA);
+            break;
+//        case 1:
+//            draw(particles[ID.x]);
+//            break;
+        case 2:
+            preprocess(particles[ID.x]);
+            break;
+    }
+}

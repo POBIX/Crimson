@@ -14,7 +14,7 @@ public unsafe class ShaderBuffer<T> : IDisposable where T : unmanaged
 
     public ShaderBuffer(uint index)
     {
-        id = Gl.GenBuffer();
+        id = Gl.CreateBuffer();
         this.index = index;
     }
 
@@ -27,29 +27,29 @@ public unsafe class ShaderBuffer<T> : IDisposable where T : unmanaged
     {
         Bind();
         length = arr.Length;
-        Gl.BufferData(BufferTarget.ShaderStorageBuffer, (uint)(length * sizeof(T)), arr, BufferUsage.DynamicCopy);
+        Gl.BufferData(BufferTargetARB.ShaderStorageBuffer, arr, BufferUsageARB.DynamicCopy);
     }
 
     public void GetData(ref T[] output)
     {
         if (output.Length != length) output = new T[length];
-        Gl.BindBuffer(BufferTarget.ShaderStorageBuffer, id);
-        IntPtr p = Gl.MapBuffer(BufferTarget.ShaderStorageBuffer, OpenGL.BufferAccess.WriteOnly);
+        Gl.BindBuffer(BufferTargetARB.ShaderStorageBuffer, id);
+        IntPtr p = new(Gl.MapBuffer(BufferTargetARB.ShaderStorageBuffer, BufferAccessARB.WriteOnly));
         T* data = (T*)p;
         for (int i = 0; i < length; i++)
             output[i] = data![i];
 
-        Gl.UnmapBuffer(BufferTarget.ShaderStorageBuffer);
+        Gl.UnmapBuffer(BufferTargetARB.ShaderStorageBuffer);
     }
 
     public void Bind()
     {
-        Gl.BindBuffer(BufferTarget.ShaderStorageBuffer, id);
-        Gl.BindBufferBase(BufferTarget.ShaderStorageBuffer, index, id);
+        Gl.BindBuffer(BufferTargetARB.ShaderStorageBuffer, id);
+        Gl.BindBufferBase(BufferTargetARB.ShaderStorageBuffer, index, id);
     }
 
     private void ReleaseUnmanagedResources() =>
-        Gl.DeleteBuffers(id);
+        Gl.DeleteBuffers(1, [id]);
 
     public void Dispose()
     {

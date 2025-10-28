@@ -3,15 +3,14 @@ using System.Drawing.Imaging;
 using OpenGL;
 using DrawingFormat = System.Drawing.Imaging.PixelFormat;
 using PixelFormat = OpenGL.PixelFormat;
-using GLAccess = OpenGL.BufferAccess;
 
 namespace Crimson;
 
 public enum BufferAccess
 {
-    Read = GLAccess.ReadOnly,
-    Write = GLAccess.WriteOnly,
-    ReadWrite = GLAccess.ReadWrite
+    Read = BufferAccessARB.ReadOnly,
+    Write = BufferAccessARB.WriteOnly,
+    ReadWrite = BufferAccessARB.ReadWrite
 }
 
 public class Texture : IDisposable
@@ -41,11 +40,11 @@ public class Texture : IDisposable
     public void SetFilter(bool filter)
     {
         BindObject();
-        Gl.TexParameter(
+        Gl.TexParameteri(
             TextureTarget.Texture2d, TextureParameterName.TextureMinFilter,
             filter ? (int)TextureMinFilter.Linear : (int)TextureMinFilter.Nearest
         );
-        Gl.TexParameter(
+        Gl.TexParameteri(
             TextureTarget.Texture2d, TextureParameterName.TextureMagFilter,
             filter ? (int)TextureMagFilter.Linear : (int)TextureMagFilter.Nearest
         );
@@ -53,8 +52,8 @@ public class Texture : IDisposable
 
     public void SetClamp(TextureWrapMode mode)
     {
-        Gl.TextureParameter(GLId, TextureParameterName.TextureWrapS, (int)mode);
-        Gl.TextureParameter(GLId, TextureParameterName.TextureWrapT, (int)mode);
+        Gl.TextureParameteri(GLId, TextureParameterName.TextureWrapS, (int)mode);
+        Gl.TextureParameteri(GLId, TextureParameterName.TextureWrapT, (int)mode);
     }
 
     /// <summary>
@@ -63,7 +62,7 @@ public class Texture : IDisposable
     /// <param name="filePath">The path to the image.</param>
     public Texture(string filePath, bool filter = false)
     {
-        GLId = Gl.GenTexture();
+        GLId = Gl.CreateTexture(TextureTarget.Texture2d);
 
         using Bitmap bmp = new(filePath);
 
@@ -88,7 +87,7 @@ public class Texture : IDisposable
                    InternalFormat internalFormat = InternalFormat.Rgba32f,
                    PixelFormat pixelFormat = PixelFormat.Bgra, PixelType pixelType = PixelType.UnsignedByte)
     {
-        GLId = Gl.GenTexture();
+        GLId = Gl.CreateTexture(TextureTarget.Texture2d);
         Size = new(width, height);
 
         SetData(data, internalFormat, pixelFormat, pixelType);
@@ -118,7 +117,7 @@ public class Texture : IDisposable
         this(width, height, IntPtr.Zero, generateMipmaps, filter) { }
 
     public void BindImage(BufferAccess access, int unit) =>
-        Gl.BindImageTexture((uint)unit, GLId, 0, false, 0, (GLAccess)access, InternalFormat.Rgba32f);
+        Gl.BindImageTexture((uint)unit, GLId, 0, false, 0, (BufferAccessARB)access, InternalFormat.Rgba32f);
 
     /// <summary>
     /// Binds the texture object without activating it.
@@ -157,11 +156,7 @@ public class Texture : IDisposable
         return output;
     }
 
-    private void ReleaseUnmanagedResources()
-    {
-        uint[] arr = { GLId }; // crash without explicitly creating array.
-        Gl.DeleteTextures(arr);
-    }
+    private void ReleaseUnmanagedResources() => Gl.DeleteTextures(1, [GLId]);
 
     public void Dispose()
     {
@@ -169,6 +164,5 @@ public class Texture : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    // no finalizer since it sometimes causes a crash due to an OpenGL.Net bug.
-    // ~Texture() => ReleaseUnmanagedResources();
+    ~Texture() => ReleaseUnmanagedResources();
 }

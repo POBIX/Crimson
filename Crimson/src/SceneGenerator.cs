@@ -104,7 +104,7 @@ public abstract class SceneGenerator
     }
 }
 
-[AttributeUsage(AttributeTargets.Method), MeansImplicitUse]
+[AttributeUsage(AttributeTargets.Method)]
 public class EditorAttribute : Attribute
 {
     public string Name { get; set; }
