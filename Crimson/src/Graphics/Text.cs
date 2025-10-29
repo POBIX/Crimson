@@ -5,20 +5,12 @@ namespace Crimson;
 
 public class Font : IDisposable
 {
-    public struct Character
+    public struct Character(Texture texture, Vector2 size, Vector2 bearing, int advance)
     {
-        public Texture texture;
-        public Vector2 size;
-        public Vector2 bearing;
-        public int advance;
-
-        public Character(Texture texture, Vector2 size, Vector2 bearing, int advance)
-        {
-            this.texture = texture;
-            this.size = size;
-            this.bearing = bearing;
-            this.advance = advance;
-        }
+        public Texture texture = texture;
+        public Vector2 size = size;
+        public Vector2 bearing = bearing;
+        public int advance = advance;
     }
 
     private Dictionary<char, Character> characters = new();
@@ -97,7 +89,7 @@ public class Font : IDisposable
 
     private static Dictionary<string, string> fontPaths = new();
     public static void Register(string name, string path) => fontPaths.Add(name, path);
-    public static string GetPath(string name) => fontPaths.TryGetValue(name, out string path) ? path : name;
+    public static string GetPath(string name) => fontPaths.GetValueOrDefault(name, name);
 
     private void ReleaseUnmanagedResources()
     {
@@ -127,21 +119,14 @@ public enum VAlignment
     Bottom
 }
 
-public struct WrapSettings
+public struct WrapSettings(IList<char> wrapOn, IList<char> breakOn, IList<char> ignore)
 {
     /// <summary> Only wrap after these characters </summary>
-    public IList<char> WrapOn { get; set; }
+    public IList<char> WrapOn { get; set; } = wrapOn;
     /// <summary> Force a line break on these characters </summary>
-    public IList<char> BreakOn { get; set; }
+    public IList<char> BreakOn { get; set; } = breakOn;
     /// <summary> Ignore these characters </summary>
-    public IList<char> Ignore { get; set; }
-
-    public WrapSettings(IList<char> wrapOn, IList<char> breakOn, IList<char> ignore)
-    {
-        WrapOn = wrapOn;
-        BreakOn = breakOn;
-        Ignore = ignore;
-    }
+    public IList<char> Ignore { get; set; } = ignore;
 }
 
 public class Label : DrawableObject, IDisposable
@@ -163,8 +148,8 @@ public class Label : DrawableObject, IDisposable
     public WrapSettings WrapSettings { get; set; } = new()
     {
         WrapOn = " ,.:;])<>\\|/`~!@#$%^&*-_+=?".ToCharArray(),
-        BreakOn = new[] { '\n' },
-        Ignore = new[] { '\r' }
+        BreakOn = ['\n'],
+        Ignore = ['\r']
     };
 
     private static float[] vertices =
@@ -273,7 +258,7 @@ public class Label : DrawableObject, IDisposable
 
         float y = VAlignment switch
         {
-            VAlignment.Top => Font.LineHeight - Font.HeightMargin,
+            VAlignment.Top => Font.HeightMargin,
             VAlignment.Center => (Size.y - textHeight) / 2,
             VAlignment.Bottom => Size.y - textHeight,
             _ => throw new ArgumentOutOfRangeException(nameof(VAlignment))
@@ -288,8 +273,8 @@ public class Label : DrawableObject, IDisposable
                 Font.Character ch = Font[c];
                 Vector2 s = ch.size * Scale;
                 Vector2 p = new(
-                    x + (ch.size.x + ch.bearing.x * 2) * Scale.x,
-                    y + (ch.size.y - ch.bearing.y * 2) * Scale.y // 3 * makes the origin be the top of the line instead of the bottom.
+                    x + ch.bearing.x * Scale.x,
+                    y + (ch.size.y - ch.bearing.y) * Scale.y
                 );
 
                 x += Font.MeasureChar(ch) * Scale.x;
