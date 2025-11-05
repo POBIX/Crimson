@@ -1,17 +1,15 @@
 ﻿using System.Runtime.CompilerServices;
-using JetBrains.Annotations;
 
 namespace Crimson;
 
 public abstract class SceneGenerator
 {
-    public Scene Scene { get; set; }
     /// <summary>
     /// The object you're currently editing.
     /// </summary>
     public SceneObject Current { get; private set; }
 
-    public abstract void Start();
+    public abstract SceneObject Root();
 
     protected Entity Spawn(Action ent, Vector2 offset, [CallerMemberName] string name = "")
     {
@@ -23,7 +21,6 @@ public abstract class SceneGenerator
             Parent = prev
         };
         Current = e;
-        Scene.AddObject(e);
         ent();
         Current = prev; // makes nested Spawns work (you'll keep editing the wrong object after exiting ent).
         return e;
@@ -48,7 +45,6 @@ public abstract class SceneGenerator
             Parent = prev
         };
         Current = t;
-        Scene.AddObject(t);
         obj(t);
         Current = prev; // makes nested spawns work (you'll keep editing the wrong object after exiting the function).
         return t;

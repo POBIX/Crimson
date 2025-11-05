@@ -13,9 +13,6 @@ public class Tweener<T> : SceneObject
     public float Duration { get; set; }
     public float Elapsed { get; private set; }
 
-    public Scene Scene { get; private set; }
-    public override void SetScene(Scene value) => Scene = value;
-
     private static Func<T, T, float, T> calculate;
 
     public event Action Finished;

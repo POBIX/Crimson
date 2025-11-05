@@ -6,7 +6,7 @@ public abstract class SceneObject
     public abstract void Update(float delta);
     public abstract void Frame(float delta);
 
-    public abstract void SetScene(Scene value);
+    public virtual Scene Scene { get; internal set; }
 
     public abstract void OnDestroy();
 
@@ -38,6 +38,7 @@ public abstract class SceneObject
         get => LocalPosition + (Parent?.Position ?? Vector2.Zero);
         set => LocalPosition = value - (Parent?.Position ?? Vector2.Zero);
     }
+    public string Name { get; set; }
     public List<string> Groups { get; set; } = new();
     public bool Paused { get; set; } = false;
 }
@@ -59,10 +60,24 @@ public sealed partial class Scene
 
     public bool Started { get; private set; } = false;
 
+    private bool paused;
+    public bool Paused
+    {
+        get => paused;
+        set
+        {
+            paused = value;
+            foreach (SceneObject o in Objects)
+                o.Paused = Paused;
+        }
+    }
+
     public void AddObject(SceneObject o)
     {
-        o.SetScene(this);
+        if (o == null) return;
+        o.Scene = this;
         scene.Add(o);
+        foreach (SceneObject c in o.Children) AddObject(c);
         if (Started) o.Start();
     }
 
@@ -191,7 +206,7 @@ public sealed partial class Scene
     {
         if (o == null) return;
         o.OnDestroy();
-        o.SetScene(null);
+        o.Scene = null;
         foreach (SceneObject c in o.Children) DoDestroy(c);
         scene.Remove(o);
     }
@@ -211,17 +226,14 @@ public sealed partial class Scene
     }
 
     /// <summary>
-    /// Finds an entity by name. Returns null if not found.
+    /// Finds an object by name. Returns null if not found or if there's a type mismatch.
     /// </summary>
-    public Entity FindEntity(string name)
+    public T FindObject<T>(string name) where T : class
     {
         foreach (SceneObject o in scene)
         {
-            if (o is Entity e)
-            {
-                if (e.Name == name)
-                    return e;
-            }
+            if (o.Name == name && o is T t)
+                return t;
         }
 
         return null;
@@ -240,8 +252,7 @@ public sealed partial class Scene
 
     public SceneGenerator Load(SceneGenerator scene)
     {
-        scene.Scene = this;
-        scene.Start();
+        AddObject(scene.Root());
         if (!Started) Start();
         return scene;
     }

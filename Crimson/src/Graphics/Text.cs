@@ -132,7 +132,6 @@ public struct WrapSettings(IList<char> wrapOn, IList<char> breakOn, IList<char> 
 public class Label : DrawableObject, IDisposable
 {
     public override Material Material { get; set; } = new();
-    public Scene Scene { get; private set; }
 
     public Font Font { get; set; }
     public string Text { get; set; } = "";
@@ -297,7 +296,6 @@ public class Label : DrawableObject, IDisposable
 
     public override void Update(float delta) { }
     public override void Frame(float delta) { }
-    public override void SetScene(Scene value) => Scene = value;
     public override void OnDestroy() { }
 
     public Rect GetBoundingBox()

@@ -175,7 +175,6 @@ public class ParticleEmitter : DrawableObject
     }
 
     public override void Frame(float delta) { }
-    public override void SetScene(Scene value) { }
     public override void Draw()
     {
         Material.SetUniform("TRANSFORM", Camera.GetTransform(Position, 0, Vector2.One), false);

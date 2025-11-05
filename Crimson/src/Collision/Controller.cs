@@ -39,7 +39,7 @@ public class Controller : Component
         };
     }
 
-    public void Move(Vector2 velocity)
+    public Vector2 Move(Vector2 velocity)
     {
         List<object> collisions = new();
         // list and not IEnumerable in order to avoid multiple enumeration
@@ -57,5 +57,6 @@ public class Controller : Component
         }
 
         Velocity = velocity;
+        return Velocity;
     }
 }

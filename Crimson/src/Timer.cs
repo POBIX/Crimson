@@ -9,8 +9,6 @@ public class Timer : SceneObject
     public bool Loop { get; set; }
     public bool Running { get; private set; }
 
-    public Scene Scene { get; internal set; }
-
     public bool SyncToPhysics { get; set; }
 
     public Timer(float duration, bool loop = true, bool syncToPhysics = true)
@@ -64,7 +62,6 @@ public class Timer : SceneObject
         if (!SyncToPhysics) Progress(delta);
     }
 
-    public override void SetScene(Scene value) => Scene = value;
     public override void OnDestroy() { }
 
     [Obsolete("Don't call Start() on Timer. Use Run() to start it", error: true)]

@@ -5,6 +5,7 @@ public class Trigger : Component
     private List<ICollide> colliders;
 
     private HashSet<Entity> collisions = new();
+    public IReadOnlyCollection<Entity> Collisions => collisions;
 
     public event Action<Entity> Entered;
     public event Action<Entity> Exited;

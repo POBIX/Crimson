@@ -11,7 +11,16 @@ public class Light : SceneObject
     /// <summary> The color of the light's emission. </summary>
     public Color Color { get; set; } = Color.White;
 
-    public Scene Scene { get; private set; }
+    private Scene scene;
+    public override Scene Scene
+    {
+        get => scene;
+        internal set
+        {
+            scene = value;
+            scene?.lights.Add(this);
+        }
+    }
 
     /// <summary>
     /// The amount of ambient light in the scene.
@@ -22,11 +31,6 @@ public class Light : SceneObject
     public override void Start() { }
     public override void Update(float delta) { }
     public override void Frame(float delta) { }
-    public override void SetScene(Scene value)
-    {
-        Scene = value;
-        Scene.lights.Add(this);
-    }
     public override void OnDestroy() { }
 }
 

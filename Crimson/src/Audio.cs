@@ -9,7 +9,7 @@ namespace Crimson;
 /// <summary>
 /// Plays audio files.
 /// </summary>
-public unsafe class AudioPlayer : IDisposable
+public unsafe class AudioPlayer : SceneObject, IDisposable
 {
     private IntPtr stream;
     /// <summary>Is the player currently paused?</summary>
@@ -244,8 +244,9 @@ public unsafe class AudioPlayer : IDisposable
         Pa_Initialize();
     }
     internal static void Terminate() => Pa_Terminate();
-}
 
-internal static class PortAudioLoader
-{
+    public override void Start() { }
+    public override void Update(float delta) { }
+    public override void Frame(float delta) { }
+    public override void OnDestroy() { }
 }

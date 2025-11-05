@@ -175,16 +175,6 @@ public class Sprite : Component, IDisposable
         Graphics.DrawArrays(PrimitiveType.Triangles, 0, 6);
     }
 
-    public void NextFrame()
-    {
-        if (++FrameH >= FramesH)
-        {
-            FrameH = 0;
-            if (++FrameV >= FramesV)
-                FrameV = 0;
-        }
-    }
-
     public void Dispose()
     {
         if (DisposeTexture)

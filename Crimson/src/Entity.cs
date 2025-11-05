@@ -4,14 +4,20 @@ public sealed class Entity : DrawableObject, IDisposable
 {
     private List<Component> components = new();
 
+    private Scene scene;
     /// <summary> The entity's current scene. </summary>
-    public Scene Scene { get; private set; }
+    public override Scene Scene
+    {
+        get => scene;
+        internal set
+        {
+            scene = value;
+            if (scene != null) Awake();
+        }
+    }
 
     /// <summary> The entity's material. </summary>
     public override Material Material { get; set; }
-
-    /// <summary> The entity's name. </summary>
-    public string Name { get; set; }
 
     /// <summary> Has Start() been called for this entity? </summary>
     public bool Started { get; private set; }
@@ -172,6 +178,7 @@ public sealed class Entity : DrawableObject, IDisposable
 
     public override void Update(float delta)
     {
+        if (Paused) return;
         RemoveQueue();
         // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < components.Count; i++)
@@ -183,6 +190,7 @@ public sealed class Entity : DrawableObject, IDisposable
 
     public override void Frame(float delta)
     {
+        if (Paused) return;
         RemoveQueue();
         // ReSharper disable once ForCanBeConvertedToForeach (collection will be modified)
         for (int i = 0; i < components.Count; i++)
@@ -190,12 +198,6 @@ public sealed class Entity : DrawableObject, IDisposable
             if (!components[i].Paused)
                 components[i].Frame(delta);
         }
-    }
-
-    public override void SetScene(Scene value)
-    {
-        Scene = value;
-        if (value != null) Awake();
     }
 
     public override void Draw()

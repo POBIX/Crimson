@@ -252,7 +252,7 @@ public static class Mathf
     public static float Min(float a, float b) => a < b ? a : b;
     public static int Max(int a, int b) => a > b ? a : b;
     public static int Min(int a, int b) => a < b ? a : b;
-    public static float Sign(float n) => n == 0 ? 0 : n > 0 ? 1 : -1;
+    public static int Sign(float n) => n == 0 ? 0 : n > 0 ? 1 : -1;
     public static float Clamp(float value, float min, float max)
     {
         if (value < min) return min;
@@ -271,6 +271,9 @@ public static class Mathf
         float dist = 2 * diff % Tau - diff;
         return a + dist * t;
     }
+
+    public static float Degrees(float rads) => rads * 180f / Pi;
+    public static float Radians(float degs) => degs * Pi / 180f;
 }
 
 /// <summary>
