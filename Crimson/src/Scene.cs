@@ -10,7 +10,28 @@ public abstract class SceneObject
 
     public abstract void OnDestroy();
 
-    public SceneObject Parent { get; set; }
+    private SceneObject parent;
+    public SceneObject Parent
+    {
+        get => parent;
+        set
+        {
+            if (value == Parent) return;
+
+            SceneObject p = Parent;
+            while (p != null)
+            {
+                if (p == value) throw new ArgumentException("Cyclic parent-child relationship!");
+                p = p.Parent;
+            }
+
+            Parent?.children.Remove(this);
+            parent = value;
+            Parent?.children.Add(this);
+        }
+    }
+    private List<SceneObject> children = new();
+    public IReadOnlyCollection<SceneObject> Children => children.AsReadOnly();
     public virtual Vector2 LocalPosition { get; set; }
     public virtual Vector2 Position
     {
@@ -120,12 +141,14 @@ public sealed partial class Scene
     /// <param name="loop">Should the timer automatically reset after Timeout?</param>
     /// <param name="syncToPhysics">Should the timer update on each physics frame or frame?</param>
     /// <returns>The created timer</returns>
-    public Timer CreateTimer(float duration, Action timeout, bool autoStart, bool loop, bool syncToPhysics = false)
+    public Timer CreateTimer(float duration, Action timeout, bool autoStart, bool loop, SceneObject parent = null,
+                             bool syncToPhysics = false)
     {
         var t = new Timer(duration, loop, syncToPhysics);
         t.Timeout += timeout;
         AddObject(t);
-        if (autoStart) t.Begin();
+        t.Parent = parent;
+        if (autoStart) t.Run();
         return t;
     }
 
@@ -150,6 +173,7 @@ public sealed partial class Scene
     /// </summary>
     /// <param name="o">The entity to destroy</param>
     public void Destroy(SceneObject o) => removalQueue.Enqueue((o, true));
+
     private void DoDestroy(SceneObject o)
     {
         DoDestroyNoDispose(o);
@@ -162,10 +186,13 @@ public sealed partial class Scene
     /// </summary>
     /// <param name="o">The entity to destroy</param>
     public void DestroyNoDispose(SceneObject o) => removalQueue.Enqueue((o, false));
+
     private void DoDestroyNoDispose(SceneObject o)
     {
+        if (o == null) return;
         o.OnDestroy();
         o.SetScene(null);
+        foreach (SceneObject c in o.Children) DoDestroy(c);
         scene.Remove(o);
     }
 
@@ -175,7 +202,7 @@ public sealed partial class Scene
     public void Clear()
     {
         foreach (SceneObject obj in scene)
-            Destroy(obj);
+            DoDestroy(obj);
 
         scene.Clear();
         removalQueue.Clear();
@@ -196,6 +223,7 @@ public sealed partial class Scene
                     return e;
             }
         }
+
         return null;
     }
 

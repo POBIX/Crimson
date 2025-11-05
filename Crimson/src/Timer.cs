@@ -21,10 +21,10 @@ public class Timer : SceneObject
         SyncToPhysics = syncToPhysics;
     }
 
-    public void Begin()
+    public void Run()
     {
         if (Scene == null)
-            throw new Exception("Timer was not added to the scene but Start() was called.");
+            throw new Exception("Timer was not added to the scene but Run() was called.");
         Running = true;
     }
 
@@ -66,5 +66,9 @@ public class Timer : SceneObject
 
     public override void SetScene(Scene value) => Scene = value;
     public override void OnDestroy() { }
+
+    [Obsolete("Don't call Start() on Timer. Use Run() to start it", error: true)]
+#pragma warning disable CS0809 // Obsolete member overrides non-obsolete member
     public override void Start() { }
+#pragma warning restore CS0809 // Obsolete member overrides non-obsolete member
 }
