@@ -252,7 +252,7 @@ public sealed partial class Scene
 
     public SceneGenerator Load(SceneGenerator scene)
     {
-        AddObject(scene.Root());
+        AddObject(scene.Get());
         if (!Started) Start();
         return scene;
     }

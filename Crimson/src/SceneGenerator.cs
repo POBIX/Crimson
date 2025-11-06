@@ -9,7 +9,7 @@ public abstract class SceneGenerator
     /// </summary>
     public SceneObject Current { get; private set; }
 
-    public abstract SceneObject Root();
+    public abstract SceneObject Get();
 
     protected Entity Spawn(Action ent, Vector2 offset, [CallerMemberName] string name = "")
     {
