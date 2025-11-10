@@ -114,16 +114,7 @@ public class TileMap : Component
                 y++;
             }
         }
-        return new();
-    }
-
-    private static string GetImagePath(string mapFile, string image)
-    {
-        if (Path.IsPathFullyQualified(image))
-            return image;
-        if (Path.GetDirectoryName(mapFile) == Path.GetDirectoryName(image))
-            return image;
-        return Path.Combine(Path.GetDirectoryName(mapFile) ?? ".", image);
+        return default;
     }
 
     private IEnumerable<BoxCollider> GetColliders(TmxTilesetTile tile, Vector2 offset, bool flipH, bool flipV, bool flipD)
@@ -145,11 +136,11 @@ public class TileMap : Component
                     // has to be multiplied by 2 in y because ??
                     b.Offset = v * new Vector2(1, 2) - new Vector2(b.Offset.y, b.Offset.x);
                 }
-                Vector2 s = TileSize - b.Size;
+                Vector2 s = b.Size;
                 if (flipH) b.Offset = new(s.x - b.Offset.x, b.Offset.y);
                 if (flipV) b.Offset = new(b.Offset.x, s.y - b.Offset.y);
 
-                b.Offset += offset - s / 2;
+                b.Offset += offset;
 
                 yield return b;
             }
@@ -186,7 +177,7 @@ public class TileMap : Component
                 // load texture from cache/create it if non existent
                 if (!textureCache.TryGetValue(tile.Gid, out Texture tex))
                 {
-                    tex = new(GetImagePath(mapFile, tileset.Image.Source));
+                    tex = new(Path.GetFullPath(tileset.Image.Source));
                     textureCache.Add(tile.Gid, tex);
                 }
                 sprite.Texture = tex;
@@ -229,8 +220,6 @@ public class TileMap : Component
 
     private void DrawTiles(Entity spriteEntity)
     {
-        spriteEntity.Material = spriteEntity.AddComponent<Material>();
-        spriteEntity.Start();
         Material prevMat = Material.Current;
         spriteEntity.Material.Use();
         Texture = Framebuffer.Draw(
@@ -245,7 +234,6 @@ public class TileMap : Component
         s.Texture = Texture;
         s.FlipV = true;
         s.DisposeTexture = false;
-        s.Start();
     }
 
     private void LoadObjects()
@@ -316,17 +304,17 @@ public class TileMap : Component
         MapFile = mapFile;
         Properties = map.Properties;
 
-        LoadObjects();
+        //LoadObjects();
 
         // Zoom on cameras breaks stuff pretty badly.
         Camera prevCam = Camera.Current;
         Camera.Deactivate();
 
-        using (Entity spriteEntity = new())
-        {
-            LoadTiles(spriteEntity, mapFile);
-            DrawTiles(spriteEntity);
-        }
+        Entity spriteEntity = new();
+        Scene.AddObject(spriteEntity);
+        LoadTiles(spriteEntity, mapFile);
+        DrawTiles(spriteEntity);
+        Scene.Destroy(spriteEntity);
 
         prevCam?.Activate();
     }
@@ -376,7 +364,7 @@ public class TileMap : Component
             Clip = GetSourceRect(tileset, id),
             Position = mapCoords,
             WorldPosition = coords,
-            Texture = new(GetImagePath(MapFile, tileset.Image.Source)),
+            Texture = new(Path.GetFullPath(tileset.Image.Source)),
             Properties = tile?.Properties,
             Layer = layer,
             Colliders = GetColliders(tile, coords, false, false, false).ToArray(),

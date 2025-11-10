@@ -12,7 +12,7 @@ public record SimpleAnimation : Animation
 {
     public Rect Clip { get; init; }
     public Vector2 Frames { get; init; }
-    public int Interval { get; init; }
+    public float Interval { get; init; }
     public bool Loop { get; init; }
     public bool SyncToPhysics { get; init; } = false;
 
