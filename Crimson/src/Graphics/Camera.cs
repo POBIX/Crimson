@@ -56,9 +56,15 @@ public class Camera : Component
     public static int CurrentWidth => (int)CurrentResolution.x;
     public static int CurrentHeight => (int)CurrentResolution.y;
 
+    private static Vector2 size = Vector2.Zero;
+    private static Vector2 RealSize => size == Vector2.Zero ? Engine.Size : size;
+
     internal Vector2 scale = Vector2.One;
 
-    static Camera() => Engine.Resize += (w, h) => Ortho = Matrix.Ortho(0, w, h, 0, -1, 1);
+    static Camera() => Engine.Resize += (w, h) =>
+    {
+        if (size == Vector2.Zero) Ortho = Matrix.Ortho(0, w, h, 0, -1, 1);
+    };
 
     public override void Start() => Engine.Resize += (_, _) => CalcSize();
 
@@ -102,35 +108,47 @@ public class Camera : Component
     public static Matrix GetTransform(Vector2 position, float rotation, Vector2 size) =>
         Ortho * CurrentTransform * Matrix.Transformation(position, rotation, size);
 
-    public static Vector2 TransformPoint(Vector2 world) => CurrentOrigin + world / Engine.Size * CurrentResolution;
+    public static Vector2 TransformPoint(Vector2 world) => CurrentOrigin + world / RealSize * CurrentResolution;
 
     private void CalcSize()
     {
         float aspect = VirtualResolution.x / VirtualResolution.y;
 
-        int width = Engine.Width;
-        int height = (int)(width / aspect + 0.5f);
+        float width = RealSize.x;
+        float height = (int)(width / aspect + 0.5f);
 
         if (height > VirtualResolution.x)
         {
-            height = Engine.Height;
+            height = RealSize.y;
             width = (int)(height * aspect + 0.5f);
         }
 
-        int x = Engine.Width / 2 - width / 2;
-        int y = Engine.Height / 2 - height / 2;
+        float x = RealSize.x / 2 - width / 2;
+        float y = RealSize.y / 2 - height / 2;
 
-        Gl.Viewport(x, y, width, height);
+        Gl.Viewport((int)x, (int)y, (int)width, (int)height);
 
-        scale = Engine.Size / VirtualResolution;
+        scale = RealSize / VirtualResolution;
     }
 
     private void CalcOffset() => actualOffset = offset switch
     {
-        Offset.Center => (VirtualResolution != Vector2.Zero ? VirtualResolution : Engine.Size) / 2,
+        Offset.Center => (VirtualResolution != Vector2.Zero ? VirtualResolution : RealSize) / 2,
         Offset.TopLeft => new(),
         _ => new()
     };
 
     public Vector2 GetOffset() => actualOffset;
+
+    public static void SetOrtho(int width, int height)
+    {
+        Ortho = Matrix.Ortho(0, width, height, 0, -1, 1);
+        size = new(width, height);
+    }
+
+    public static void DefaultOrtho()
+    {
+        Ortho = Matrix.Ortho(0, Engine.Width, Engine.Height, 0, -1, 1);
+        size = Vector2.Zero;
+    }
 }

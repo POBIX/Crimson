@@ -84,8 +84,8 @@ public class Texture : IDisposable
     /// Creates a texture from a raw data pointer and with a specified width and height.
     /// </summary>
     public Texture(int width, int height, IntPtr data, bool generateMipmaps = true, bool filter = false,
-                   InternalFormat internalFormat = InternalFormat.Rgba32f,
-                   PixelFormat pixelFormat = PixelFormat.Bgra, PixelType pixelType = PixelType.UnsignedByte)
+                   InternalFormat internalFormat = InternalFormat.Rgba8,
+                   PixelFormat pixelFormat = PixelFormat.Rgba, PixelType pixelType = PixelType.UnsignedByte)
     {
         GLId = Gl.CreateTexture(TextureTarget.Texture2d);
         Size = new(width, height);

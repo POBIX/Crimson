@@ -38,19 +38,34 @@ public class Framebuffer : IDisposable
     /// </summary>
     public static Texture Draw(Vector2 size, Action action)
     {
-        Framebuffer prev = Active;
+        Framebuffer prevFBO = Active;
+
+        int[] prevViewport = new int[4];
+        Gl.GetIntegerv(GetPName.Viewport, prevViewport);
+        Camera.SetOrtho((int)size.x, (int)size.y);
+
         Texture texture = new(size);
         using Framebuffer fbo = new();
 
         fbo.AttachTexture(texture, 0);
+
+        FramebufferStatus status = Gl.CheckFramebufferStatus(FramebufferTarget.Framebuffer);
+        if (status != FramebufferStatus.FramebufferComplete)
+        {
+            Console.WriteLine($"Framebuffer incomplete: {status}");
+            return null;
+        }
+
         Graphics.Clear();
         Gl.Viewport(0, 0, (int)size.x, (int)size.y);
 
         action();
 
-        if (prev != null) prev.Bind();
+        if (prevFBO != null) prevFBO.Bind();
         else BindDefault();
 
+        Camera.DefaultOrtho();
+        Gl.Viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
         return texture;
     }
 
