@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="DotTiled" Version="1.0.0" />
         <PackageReference Include="glfw-net" Version="3.3.1" />
         <PackageReference Include="ImGui.NET" Version="1.86.0" />
         <PackageReference Include="libsndfileSharp" Version="0.2.1" />
@@ -14,7 +15,6 @@
         <ProjectReference Include="../OpenGLSharp/OpenGLSharp.csproj" />
         <PackageReference Include="SharpFont.NetStandard" Version="1.0.5" />
         <PackageReference Include="System.Drawing.Common" Version="6.0.0-preview.6.21352.12" />
-        <PackageReference Include="TiledSharp" Version="1.0.1" />
     </ItemGroup>
 
     <ItemGroup>

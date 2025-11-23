@@ -1,26 +1,31 @@
 ﻿using ImGuiNET;
-using TiledSharp; // TiledSharp is deprecated, but it provides support for collisions whereas TiledCS doesn't.
+using DotTiled;
+using DotTiled.Serialization;
+using Object = DotTiled.Object;
+using TilesetTile = DotTiled.Tile;
+using DTileLayer = DotTiled.TileLayer;
+using DTileObject = DotTiled.TileObject;
 
 namespace Crimson;
 
-public record struct TileLayer
+public struct TileLayer
 {
     public string Name { get; init; }
     public float Opacity { get; init; }
     public bool Visible { get; init; }
     public Vector2 Offset { get; init; }
-    public IDictionary<string, string> Properties { get; init; }
+    public List<IProperty> Properties { get; init; }
     public List<Tile> Tiles { get; internal set; }
     public TileMap TileMap { get; init; }
 }
 
-public record struct Tile
+public struct Tile
 {
-    public int ID { get; init; }
+    public uint ID { get; init; }
     public Texture Texture { get; init; }
     public Vector2 WorldPosition { get; init; }
     public Vector2 Position { get; set; }
-    public IDictionary<string, string> Properties { get; init; }
+    public List<IProperty> Properties { get; init; }
     public TileLayer Layer { get; init; }
     public Rect Clip { get; init; }
     public BoxCollider[] Colliders { get; init; }
@@ -29,9 +34,9 @@ public record struct Tile
     public bool FlipD { get; init; }
 }
 
-public record struct TileObject
+public struct TileObject
 {
-    public int ID { get; init; }
+    public uint ID { get; init; }
     public string Name { get; init; }
     public string Type { get; init; }
     public Vector2 Position { get; init; }
@@ -39,10 +44,10 @@ public record struct TileObject
     public float Rotation { get; init; }
     public bool FlipH { get; init; }
     public bool FlipV { get; init; }
-    public IDictionary<string, string> Properties { get; init; }
+    public List<IProperty> Properties { get; init; }
 }
 
-public record struct TileLabel
+public struct TileLabel
 {
     public int ID { get; init; }
     public string Name { get; init; }
@@ -50,7 +55,8 @@ public record struct TileLabel
     public Vector2 Position { get; init; }
     public Vector2 Size { get; init; }
     public float Rotation { get; init; }
-    public TmxAlignment Alignment { get; init; }
+    public TextHorizontalAlignment HAlignment { get; init; }
+    public TextVerticalAlignment VAlignment { get; init; }
     public ImFontPtr Font { get; init; }
     public string Text { get; init; }
     public int FontSize { get; init; }
@@ -71,13 +77,13 @@ public class TileMap : Component
 
     public Texture Texture { get; private set; }
 
-    private TmxMap map;
+    private Map map;
 
     public string MapFile { get; private set; }
 
     public TileLayer CustomTilesLayer { get; private set; }
 
-    public IDictionary<string, string> Properties { get; private set; }
+    public List<IProperty> Properties { get; private set; }
 
     private static ComputeShader tileSetter;
 
@@ -89,26 +95,26 @@ public class TileMap : Component
         Engine.Resize += (_, _) => tileSetter.SetUniform("CAM_SIZE", Camera.CurrentResolution);
     }
 
-    private static TmxTileset GetTileset(TmxMap map, int gid)
+    private static Tileset GetTileset(Map map, uint gid)
     {
-        foreach (TmxTileset t in map.Tilesets)
+        foreach (Tileset t in map.Tilesets)
         {
-            if (gid >= t.FirstGid)
+            if (gid >= t.FirstGID.Value)
                 return t;
         }
         return null;
     }
 
-    private static Rect GetSourceRect(TmxTileset tileset, int gid)
+    private static Rect GetSourceRect(Tileset tileset, uint gid)
     {
         float x = 0, y = 0;
 
         for (int i = 0; i < tileset.TileCount; i++)
         {
-            if (i == gid - tileset.FirstGid)
+            if (i == gid - tileset.FirstGID.Value)
                 return new(x * tileset.TileWidth, y * tileset.TileHeight, tileset.TileWidth, tileset.TileHeight);
 
-            if (++x == tileset.Image.Width / tileset.TileWidth)
+            if (++x == (float)tileset.Image.Value.Width.Value / tileset.TileWidth)
             {
                 x = 0;
                 y++;
@@ -117,105 +123,119 @@ public class TileMap : Component
         return default;
     }
 
-    private IEnumerable<BoxCollider> GetColliders(TmxTilesetTile tile, Vector2 offset, bool flipH, bool flipV, bool flipD)
+    private IEnumerable<BoxCollider> GetColliders(TilesetTile tile, Vector2 offset, bool flipH, bool flipV, bool flipD)
     {
         if (tile == null) yield break;
 
-        foreach (TmxObjectGroup group in tile.ObjectGroups)
+        foreach (Object obj in tile.ObjectLayer.Value.Objects)
         {
-            foreach (TmxObject obj in group.Objects)
+            var b = AddComponent<BoxCollider>();
+
+            b.Size = new Vector2(obj.Width, obj.Height);
+            b.Offset = new(obj.X, obj.Y);
+            if (flipD)
             {
-                var b = AddComponent<BoxCollider>();
-
-                b.Size = new Vector2((float)obj.Width, (float)obj.Height);
-                b.Offset = new((float)obj.X, (float)obj.Y);
-                if (flipD)
-                {
-                    b.Size = new(b.Size.y, b.Size.x);
-                    Vector2 v = TileSize - b.Size;
-                    // has to be multiplied by 2 in y because ??
-                    b.Offset = v * new Vector2(1, 2) - new Vector2(b.Offset.y, b.Offset.x);
-                }
-                Vector2 s = b.Size;
-                if (flipH) b.Offset = new(s.x - b.Offset.x, b.Offset.y);
-                if (flipV) b.Offset = new(b.Offset.x, s.y - b.Offset.y);
-
-                b.Offset += offset;
-
-                yield return b;
+                b.Size = new(b.Size.y, b.Size.x);
+                Vector2 v = TileSize - b.Size;
+                // has to be multiplied by 2 in y because ??
+                b.Offset = v * new Vector2(1, 2) - new Vector2(b.Offset.y, b.Offset.x);
             }
+            Vector2 s = b.Size;
+            if (flipH) b.Offset = new(s.x - b.Offset.x, b.Offset.y);
+            if (flipV) b.Offset = new(b.Offset.x, s.y - b.Offset.y);
+
+            b.Offset += offset;
+
+            yield return b;
         }
     }
 
     private void LoadTiles(Entity spriteEntity, string mapFile)
     {
-        Dictionary<int, Texture> textureCache = new();
+        Dictionary<uint, Texture> textureCache = new();
 
-        foreach (TmxLayer layer in map.Layers)
+        foreach (var layer in map.Layers.OfType<DTileLayer>())
         {
-            List<Tile> layerTiles = new(layer.Tiles.Count);
+            List<Tile> layerTiles = new(layer.Data.Value.GlobalTileIDs.Value.Length);
 
             TileLayer tileLayer = new()
             {
                 Name = layer.Name,
-                Opacity = (float)layer.Opacity,
+                Opacity = layer.Opacity,
                 Visible = layer.Visible,
-                Offset = new((float)(layer.OffsetX ?? 0), (float)(layer.OffsetY ?? 0)),
+                Offset = new(layer.OffsetX, layer.OffsetY),
                 Properties = layer.Properties,
                 Tiles = layerTiles
             };
 
-            foreach (TmxLayerTile tile in layer.Tiles)
+            for (int x = 0; x < layer.Width; x++)
             {
-                // if empty tile
-                if (tile.Gid == 0) continue;
-
-                TmxTileset tileset = GetTileset(map, tile.Gid);
-
-                var sprite = spriteEntity.AddComponent<Sprite>();
-
-                // load texture from cache/create it if non existent
-                if (!textureCache.TryGetValue(tile.Gid, out Texture tex))
+                for (int y = 0; y < layer.Height; y++)
                 {
-                    tex = new(Path.GetFullPath(tileset.Image.Source));
-                    textureCache.Add(tile.Gid, tex);
+                    uint gid = layer.GetGlobalTileIDAtCoord(x, y);
+
+                    // if empty tile
+                    if (gid == 0) continue;
+
+                    // flip flags are encoded inside the GID
+                    const int h = 1 << 31, v = 1 << 30, d = 1 << 29, r = 1 << 28;
+                    bool flipD = (gid & d) != 0;
+
+                    var sprite = spriteEntity.AddComponent<Sprite>();
+                    sprite.FlipH = (gid & h) != 0;
+                    sprite.FlipV = (gid & v) != 0;
+                    sprite.Rotation = flipD ? -Mathf.Pi / 2 : 0;
+
+                    // we need to clear them to get the real GID
+                    gid &= ~(h | v | d | r);
+
+                    Tileset tileset = GetTileset(map, gid);
+
+                    // load texture from cache/create it if non existent
+                    if (!textureCache.TryGetValue(gid, out Texture tex))
+                    {
+                        // thank you for using absolute paths tiled
+                        tex = new(Path.GetFullPath(
+                            Path.Combine(Path.GetDirectoryName(mapFile) ?? "", Path.Combine(
+                                Path.GetDirectoryName(tileset.Source.Value) ?? "", tileset.Image.Value.Source.Value)
+                            ))
+                        );
+                        textureCache.Add(gid, tex);
+                    }
+
+                    sprite.Texture = tex;
+                    sprite.Clip = GetSourceRect(tileset, gid);
+                    sprite.Offset = new(
+                        x * TileSize.x + layer.OffsetX + TileSize.x / 2,
+                        y * TileSize.y + layer.OffsetY + TileSize.y / 2
+                    );
+
+                    BoxCollider[] colliders = GetColliders(
+                        GetTile(tileset, gid), sprite.Offset, sprite.FlipH, sprite.FlipV, flipD
+                    ).ToArray();
+
+                    layerTiles.Add(new()
+                    {
+                        ID = gid,
+                        Position = new(x, y),
+                        WorldPosition = sprite.Offset,
+                        Texture = tex,
+                        Properties = tileset.Tiles.FirstOrDefault(t => t.ID == gid - tileset.FirstGID.Value)?.Properties,
+                        Layer = tileLayer,
+                        Clip = sprite.Clip,
+                        Colliders = colliders,
+                        FlipH = sprite.FlipH,
+                        FlipV = sprite.FlipV,
+                        FlipD = flipD
+                    });
                 }
-                sprite.Texture = tex;
-                sprite.Clip = GetSourceRect(tileset, tile.Gid);
-                sprite.Offset = new(
-                    tile.X * TileSize.x + (float)(layer.OffsetX ?? 0) + TileSize.x / 2,
-                    tile.Y * TileSize.y + (float)(layer.OffsetY ?? 0) + TileSize.y / 2
-                );
-                sprite.FlipH = tile.HorizontalFlip;
-                sprite.FlipV = tile.VerticalFlip;
-                sprite.Rotation = tile.DiagonalFlip ? -Mathf.Pi / 2 : 0;
-
-                BoxCollider[] colliders = GetColliders(
-                    GetTile(tileset, tile.Gid), sprite.Offset, sprite.FlipH, sprite.FlipV, tile.DiagonalFlip
-                ).ToArray();
-
-                layerTiles.Add(new()
-                {
-                    ID = tile.Gid,
-                    Position = new(tile.X, tile.Y),
-                    WorldPosition = sprite.Offset,
-                    Texture = tex,
-                    Properties = tileset.Tiles.Values.FirstOrDefault(t => t.Id == tile.Gid - tileset.FirstGid)?.Properties ??
-                                 new Dictionary<string, string>(),
-                    Layer = tileLayer,
-                    Clip = sprite.Clip,
-                    Colliders = colliders,
-                    FlipH = tile.HorizontalFlip,
-                    FlipV = tile.VerticalFlip,
-                    FlipD = tile.DiagonalFlip
-                });
             }
+
             Layers.Add(tileLayer);
-            Tiles.AddRange(tileLayer.Tiles);
+                Tiles.AddRange(tileLayer.Tiles);
         }
         CustomTilesLayer = new TileLayer { Name = "Crimson#CustomTiles", Tiles = new(), TileMap = this };
         Layers.Add(CustomTilesLayer);
-
     }
 
     private void DrawTiles(Entity spriteEntity)
@@ -240,11 +260,11 @@ public class TileMap : Component
     {
         bool addedLabels = false;
         ImGuiIOPtr io = ImGui.GetIO();
-        foreach (TmxObjectGroup group in map.ObjectGroups)
+        foreach (ObjectLayer layer in map.Layers.OfType<ObjectLayer>())
         {
-            foreach (TmxObject obj in group.Objects)
+            foreach (Object obj in layer.Objects)
             {
-                if (obj.Text != null && obj.Text.Value != "")
+                if (obj is TextObject text)
                 {
                     addedLabels = true;
                     // bool filter = false;
@@ -266,29 +286,31 @@ public class TileMap : Component
                     // });
                     Labels.Add(new TileLabel
                     {
-                        Font = io.Fonts.AddFontFromFileTTF(Engine.GUI.GetFontPath(obj.Text.FontFamily), obj.Text.PixelSize),
-                        Color = Color.Byte(obj.Text.Color.R, obj.Text.Color.G, obj.Text.Color.B),
-                        Rotation = (float)obj.Rotation,
+                        Font = io.Fonts.AddFontFromFileTTF(Engine.GUI.GetFontPath(text.FontFamily),
+                            text.PixelSize),
+                        Color = Color.Byte(text.Color.R, text.Color.G, text.Color.B),
+                        Rotation = obj.Rotation,
                         Visible = obj.Visible,
-                        Position = new((float)obj.X, (float)obj.Y),
-                        Size = new((float)obj.Width, (float)obj.Height),
-                        Text = obj.Text.Value,
-                        Alignment = obj.Text.Alignment
+                        Position = new(obj.X, obj.Y),
+                        Size = new(obj.Width, obj.Height),
+                        Text = text.Text,
+                        HAlignment = text.HorizontalAlignment,
+                        VAlignment = text.VerticalAlignment
                     });
                 }
-                else
+                else if (obj is DTileObject tile)
                 {
                     Objects.Add(new TileObject
                     {
-                        ID = obj.Id,
-                        Name = obj.Name,
-                        Position = new((float)obj.X + TileSize.x / 2, (float)obj.Y - TileSize.y / 2),
-                        Properties = obj.Properties,
-                        Rotation = (float)obj.Rotation,
-                        Size = new((float)obj.Width, (float)obj.Height),
-                        Type = obj.Type,
-                        FlipH = obj.Tile.HorizontalFlip,
-                        FlipV = obj.Tile.VerticalFlip
+                        ID = tile.ID.Value,
+                        Name = tile.Name,
+                        Position = new(tile.X + TileSize.x / 2, tile.Y - TileSize.y / 2),
+                        Properties = tile.Properties,
+                        Rotation = tile.Rotation,
+                        Size = new(tile.Width, tile.Height),
+                        Type = tile.Type,
+                        FlipH = (tile.FlippingFlags & FlippingFlags.FlippedHorizontally) != 0,
+                        FlipV = (tile.FlippingFlags & FlippingFlags.FlippedVertically) != 0
                     });
                 }
             }
@@ -298,13 +320,13 @@ public class TileMap : Component
 
     public void Load(string mapFile)
     {
-        map = new(mapFile);
+        map = Loader.Default().LoadMap(mapFile);
         TileSize = new Vector2(map.TileWidth, map.TileHeight);
         MapSize = new Vector2(map.Width, map.Height);
         MapFile = mapFile;
         Properties = map.Properties;
 
-        //LoadObjects();
+        LoadObjects();
 
         // Zoom on cameras breaks stuff pretty badly.
         Camera prevCam = Camera.Current;
@@ -319,8 +341,8 @@ public class TileMap : Component
         prevCam?.Activate();
     }
 
-    private static TmxTilesetTile GetTile(TmxTileset tileset, int gid) =>
-        tileset.Tiles.Values.FirstOrDefault(v => v.Id == gid - tileset.FirstGid);
+    private static TilesetTile GetTile(Tileset tileset, uint gid) =>
+        tileset.Tiles.FirstOrDefault(v => v.ID == gid - tileset.FirstGID.Value);
 
     /// <summary>
     /// Returns the first tile at the given map coordinates, or null if tile is empty.
@@ -350,13 +372,13 @@ public class TileMap : Component
     public Vector2 ToWorld(Vector2 mapCoords) => Position + mapCoords * TileSize;
     public Vector2 ToMap(Vector2 worldCoords) => ((worldCoords - Position) / TileSize).Ceil();
 
-    private static TmxTilesetTile GetTileOrNull(TmxTileset tileset, int id) =>
-        tileset.Tiles.FirstOrDefault(t => t.Key == id - tileset.FirstGid).Value;
+    private static TilesetTile GetTileOrNull(Tileset tileset, uint id) =>
+        tileset.Tiles.FirstOrDefault(t => t.ID == id - tileset.FirstGID.Value);
 
-    private Tile ConstructTile(int id, Vector2 mapCoords, TileLayer layer)
+    private Tile ConstructTile(uint id, Vector2 mapCoords, TileLayer layer)
     {
-        TmxTileset tileset = GetTileset(map, id);
-        TmxTilesetTile tile = GetTileOrNull(tileset, id);
+        Tileset tileset = GetTileset(map, id);
+        TilesetTile tile = GetTileOrNull(tileset, id);
         Vector2 coords = ToWorld(mapCoords);
         return new Tile
         {
@@ -364,7 +386,7 @@ public class TileMap : Component
             Clip = GetSourceRect(tileset, id),
             Position = mapCoords,
             WorldPosition = coords,
-            Texture = new(Path.GetFullPath(tileset.Image.Source)),
+            Texture = new(Path.GetFullPath(tileset.Image.Value.Source.Value)),
             Properties = tile?.Properties,
             Layer = layer,
             Colliders = GetColliders(tile, coords, false, false, false).ToArray(),
@@ -374,7 +396,7 @@ public class TileMap : Component
         };
     }
 
-    public void SetTile(Vector2 mapCoords, int id)
+    public void SetTile(Vector2 mapCoords, uint id)
     {
         Tile? prev = GetTile(mapCoords);
         if (prev != null)
