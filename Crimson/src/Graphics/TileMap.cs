@@ -132,7 +132,7 @@ public class TileMap : Component
             var b = AddComponent<BoxCollider>();
 
             b.Size = new Vector2(obj.Width, obj.Height);
-            b.Offset = new(obj.X, obj.Y);
+            b.Offset = new Vector2(obj.X, obj.Y) - (TileSize - b.Size)/2f;
             if (flipD)
             {
                 b.Size = new(b.Size.y, b.Size.x);
@@ -232,7 +232,7 @@ public class TileMap : Component
             }
 
             Layers.Add(tileLayer);
-                Tiles.AddRange(tileLayer.Tiles);
+            Tiles.AddRange(tileLayer.Tiles);
         }
         CustomTilesLayer = new TileLayer { Name = "Crimson#CustomTiles", Tiles = new(), TileMap = this };
         Layers.Add(CustomTilesLayer);
